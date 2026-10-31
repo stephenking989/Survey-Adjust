@@ -1,16 +1,13 @@
 // Error ellipses against the STAR*NET listings of the two real 3D jobs, plus the maths on small cases.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { runAdjustment, settingsFromSnproj, defaultSettings } from '../engine/index.js';
 import { ellipseTables, stationEllipse, relativeEllipse } from '../engine/ellipse.js';
 import { near } from './helpers.js';
+import { listingJob, publicJob, SKIP_NO_LISTING } from './jobs.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const read = (n) => fs.readFileSync(path.join(here, 'fixtures', '3d', n), 'utf8').replace(/\r\n/g, '\n');
-const run = (job) => runAdjustment([{ name: `${job}.dat`, text: read(`${job}.dat`) }], settingsFromSnproj(read(`${job}.snproj`)), {});
+const lf = (s) => s.replace(/\r\n/g, '\n');
+const runJob = (J) => runAdjustment([{ name: `${J.base}.dat`, text: lf(J.read('dat')) }], settingsFromSnproj(J.read('snproj')), {});
 
 /** Rows of a listing section: station(s) then semi-major, semi-minor, azimuth D-MM, vertical. */
 function listingRows(lst, title, nameCount) {
@@ -32,10 +29,11 @@ function listingRows(lst, title, nameCount) {
 
 const diffAz = (a, b) => { const d = Math.abs(a - b) % 180; return Math.min(d, 180 - d); };
 
-for (const [job, confText] of [['NET_B', '95%'], ['NET_A', '68.27%']]) {
-  test(`${job}: station and relative error ellipses match the STAR*NET listing (${confText})`, () => {
-    const out = run(job);
-    const lst = read(`${job}.lst`);
+for (const [key, confText] of [['control', '95%'], ['pier', '68.27%']]) {
+  const J = listingJob(key);
+  test(`3D job ${key}: station and relative error ellipses match the STAR*NET listing (${confText})`, { skip: J ? false : SKIP_NO_LISTING }, () => {
+    const out = runJob(J);
+    const lst = lf(J.read('lst'));
     assert.ok(lst.includes(`Confidence Region = ${confText}`));
     const t = ellipseTables(out);
     const stRows = listingRows(lst, 'Station Coordinate Error Ellipses', 1);
@@ -51,7 +49,7 @@ for (const [job, confText] of [['NET_B', '95%'], ['NET_A', '68.27%']]) {
     };
     for (const row of stRows) compare(t.stations.find((s) => s.name === row.names[0]), row);
     for (const row of relRows) compare(t.relative.find((r) => r.from === row.names[0] && r.to === row.names[1]), row);
-    console.log(`${job}: largest differences  axes ${worst.major.toExponential(2)} m, vertical ${worst.vert.toExponential(2)} m, azimuth ${worst.az.toFixed(3)} deg`);
+    console.log(`${key}: largest differences  axes ${worst.major.toExponential(2)} m, vertical ${worst.vert.toExponential(2)} m, azimuth ${worst.az.toFixed(3)} deg`);
     // The listing prints 6 decimals, so half a unit in the last place (5e-7) is rounding, not a difference.
     near(assert, worst.major, 0, 1e-6, 'semi-axes');
     near(assert, worst.vert, 0, 1e-6, 'vertical');
@@ -82,14 +80,17 @@ test('ellipse maths: a known covariance gives the known axes, azimuth and confid
 });
 
 test('.ELLIPSE limits the stations listed; .REL pairs, /OBS and /CON choose the relative ellipses', () => {
-  const dat = read('NET_B.dat');
-  const settings = settingsFromSnproj(read('NET_B.snproj'));
+  const P = publicJob('control');
+  const dat = lf(P.read('dat'));
+  const settings = settingsFromSnproj(P.read('snproj'));
   const withExtra = (extra) => ellipseTables(runAdjustment([{ name: 'a.dat', text: dat + '\n' + extra + '\n' }], settings, {}));
   const base = ellipseTables(runAdjustment([{ name: 'a.dat', text: dat }], settings, {}));
   assert.equal(base.stations.length, 9);
-  assert.deepEqual(withExtra('.ELL P3 6005').stations.map((s) => s.name), ['P3', '6005']);
-  const grp = withExtra('.REL /CON P3 6004 6005');
-  assert.ok(grp.relative.some((r) => r.from === '6004' && r.to === '6005'));
+  const names = base.stations.map((s) => s.name);
+  const nm = (i) => names[i];
+  assert.deepEqual(withExtra(`.ELL ${nm(3)} ${nm(5)}`).stations.map((s) => s.name), [nm(3), nm(5)]);
+  const grp = withExtra(`.REL /CON ${nm(3)} ${nm(4)} ${nm(5)}`);
+  assert.ok(grp.relative.some((r) => r.from === nm(4) && r.to === nm(5)));
   const obs = withExtra('.REL /OBS');
   assert.ok(obs.relative.length >= base.relative.length);
 });

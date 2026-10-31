@@ -45,12 +45,12 @@ test('analytic partials of azimuth, distance and zenith match finite differences
 
 test('error model reproduces std errors printed in a real STAR*NET listing', () => {
   const ins = settings().instrument;
-  // P36 -> P3: slope 65.7767 m, zenith 83-00-18.7 (listing: dir 3.15", zen 3.28", dist 0.0007 m)
+  // a pointing in a real listing: slope 65.7767 m, zenith 83-00-18.7 (listing: dir 3.15", zen 3.28", dist 0.0007 m)
   const S = 65.7767; const z = (83 + 18.7 / 3600) * DEG; const Dh = S * Math.sin(z);
   assert.equal(errorModel('dir', ins, { S, z, Dh }).toFixed(2), '3.15');
   assert.equal(errorModel('zen', ins, { S, z, Dh }).toFixed(2), '3.28');
   assert.equal(errorModel('dist', ins, { S, z, Dh }).toFixed(4), '0.0007');
-  // P36 -> P37: 12.8477 m, zenith 94-09-23.6 (listing: dir 5.69", zen 7.44" (7.435 at the rounding edge), dist 0.0006 m)
+  // a short pointing in the same listing: 12.8477 m, zenith 94-09-23.6 (listing: dir 5.69", zen 7.44" (7.435 at the rounding edge), dist 0.0006 m)
   const S2 = 12.8477; const z2 = (94 + 9 / 60 + 23.6 / 3600) * DEG; const Dh2 = S2 * Math.sin(z2);
   assert.equal(errorModel('dir', ins, { S: S2, z: z2, Dh: Dh2 }).toFixed(2), '5.69');
   near(assert, errorModel('zen', ins, { S: S2, z: z2, Dh: Dh2 }), 7.44, 0.006);

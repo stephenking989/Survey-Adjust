@@ -161,7 +161,7 @@ async function loadSample(url, name, settings) {
     showProblems([{ severity: 'error', message: `Could not load the sample: ${err.message}` }]);
   }
 }
-el.sampleBtn.addEventListener('click', () => loadSample('../tests/fixtures/LEVEL_JOB.dat', 'LEVEL_JOB.dat', { levelStdErr: 0.0002 }));
+el.sampleBtn.addEventListener('click', () => loadSample('./samples/LEVEL_SAMPLE.dat', 'LEVEL_SAMPLE.dat', { levelStdErr: 0.0002 }));
 el.sample2dBtn.addEventListener('click', () => loadSample('./samples/2D_TRAVERSE.dat', '2D_TRAVERSE.dat', {
   instrument: { distanceConstant: 0.02, distancePpm: 0, direction: 5, angle: 5, azimuth: 5, centeringInstrument: 0, centeringTarget: 0 },
 }));

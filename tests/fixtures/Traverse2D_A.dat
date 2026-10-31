@@ -1,0 +1,18 @@
+# 2D link traverse A: control, then four angle-and-distance legs ending on a second control point. Metres.
+# Angles are angle-right (clockwise from backsight to foresight). Distances are horizontal.
+.UNITS METERS
+.UNITS DMS
+.ORDER NE
+.ORDER ATFROMTO
+.2D
+
+C R01 2926.210 8593.286 ! !
+C R02 2983.344 8409.607 ! !
+C R03 2232.567 8811.281 ! !
+
+TB R01
+T R02 014-32-48 294.012
+T R04 204-59-34 270.579
+T R05 185-54-17 209.087
+T R06 233-55-14 205.284
+TE R03

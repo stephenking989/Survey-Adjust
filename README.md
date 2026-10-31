@@ -86,11 +86,13 @@ The linear algebra (`engine/matrix.js`) and the probability functions (`engine/s
 | Explicit std errors are used as given unless `.ADDCENTERING` is on | Appendix C.4, note 3 | `updateSigmas` |
 | Propagated std devs are scaled by the total error factor **only when the chi-square test fails** | "Station Error Ellipses" | `propagationScale` |
 
-The last row corrects version 0.1, which scaled always. The levelling run (error factor 6.336, test failed) is scaled; the 3D pier job (error factor 0.968, test passed) is not, and both listings agree with the rule.
+The last row corrects version 0.1, which scaled always. The levelling run (error factor 6.336, test failed) is scaled; the first 3D job (error factor 0.968, test passed) is not, and both listings agree with the rule.
 
 ## Validation against STAR*NET
 
-**1D levelling** - `tests/fixtures/LEVEL_JOB.*` is a real STAR*NET-PRO 14 run (40 stations, 50 level runs, one fixed station); the test suite checks our result against its `.lst`, `.pts` and `.snproj`:
+**About the test jobs.** The numbers below come from real STAR*NET-PRO 14 runs of three coursework jobs. The jobs themselves are published in `tests/fixtures/` with the stations renamed, the comments removed and the coordinates unchanged (the angles and distances are as observed), so nothing identifies the original survey. STAR*NET's own listings of the original runs are not in the repository. Once the renamed jobs have been re-run in STAR*NET, their listings are added here and the tests compare against those; until then the comparison tests run only on a machine that has the originals (they are skipped otherwise). See `tests/fixtures/README.md`.
+
+**1D levelling** - `Level1D_A` (40 stations, 50 level runs, one fixed station); the test suite checks our result against STAR*NET's `.lst`, `.pts` and `.snproj`:
 
 | Check | STAR*NET | Survey-Adjust |
 |---|---|---|
@@ -102,9 +104,9 @@ The last row corrects version 0.1, which scaled always. The levelling run (error
 | Max std dev difference vs `.lst` | | 0.0000005 m (the `.lst` has 6 decimals) |
 | Observations flagged `*` | 16 | 16, same ones |
 
-**3D networks** - two real STAR*NET runs in `tests/fixtures/3d/` (see the README there: six comment and path lines were edited to remove a student number, an instrument serial and a course/crew line; no observation or result was touched). The suite compares our result with their `.lst`, `.pts` and `.snproj`:
+**3D networks** - `Network3D_A` and `Network3D_B`. The suite compares our result with STAR*NET's `.lst`, `.pts` and `.snproj`:
 
-| | Pier monitoring (25 stations, 192 DM, 3 weighted control) | Control network (1 control point, fixed azimuth, `M`/`DN`/`DV`) |
+| | Network A (25 stations, 192 DM, 3 weighted control) | Network B (1 control point, fixed azimuth, `M`/`DN`/`DV`) |
 |---|---|---|
 | Stations / obs / unknowns / redundant | 25 / 585 / 99 / 486 (exact) | 9 / 246 / 50 / 196 (exact) |
 | Error factor, chi-square | 0.968, passed, bounds 0.937/1.063 (exact) | 0.947, passed, bounds 0.901/1.099 (exact) |
@@ -123,7 +125,7 @@ Ellipse axes use the 2-D chi-square factor for the chosen confidence (2.448 at 9
 
 **Known differences** (not hidden by loosened tolerances):
 
-- The pier job's coordinates differ from STAR*NET's by up to 16 micrometres, about 0.02 arc-seconds at 100 m. Rounding of the `.pts` explains 5. I ruled out the iteration count, the weight geometry and the refraction coefficient; the remaining cause is unknown.
+- Network A's coordinates differ from STAR*NET's by up to 16 micrometres, about 0.02 arc-seconds at 100 m. Rounding of the `.pts` explains 5. I ruled out the iteration count, the weight geometry and the refraction coefficient; the remaining cause is unknown.
 - The control-network job sets instrument centering to 1 mm. STAR*NET treats the directions of one set as statistically correlated in that case; we do not yet, which is probably why its distance sum of squares is 0.06 off. The engine adds a warning when this applies.
 
 ## Run it locally

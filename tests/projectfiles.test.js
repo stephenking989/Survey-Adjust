@@ -9,12 +9,13 @@ import {
   runAdjustment, checkData, parseDataFiles, DataFileError, AdjustmentError, adviseOnAdjustment, worstResiduals,
   defaultSettings, settingsFromSnproj, dataFileNamesFromSnproj,
 } from '../engine/index.js';
-import { fixture, near } from './helpers.js';
+import { near } from './helpers.js';
+import { publicJob } from './jobs.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sample3d = fs.readFileSync(path.join(here, '..', 'app', 'samples', '3D_SAMPLE.dat'), 'utf8').replace(/\r\n/g, '\n');
-const level = fixture('LEVEL_JOB.dat').replace(/\r\n/g, '\n');
-const levelSettings = () => ({ ...defaultSettings(), ...settingsFromSnproj(fixture('LEVEL_JOB.snproj')) });
+const level = publicJob('level').read('dat').replace(/\r\n/g, '\n');
+const levelSettings = () => ({ ...defaultSettings(), ...settingsFromSnproj(publicJob('level').read('snproj')) });
 const sample3dSettings = () => ({
   ...defaultSettings(), refraction: 0.07,
   instrument: { ...defaultSettings().instrument, distanceConstant: 0.0007, distancePpm: 2, direction: 3, zenith: 3, angle: 4, azimuth: 4 },
@@ -147,6 +148,6 @@ test('advice: one blunder in an otherwise good loop is called a blunder, and it 
 
 test('a .snproj names its data files in order', () => {
   assert.deepEqual(dataFileNamesFromSnproj('[DataFileList]\n#\n3 "b.dat"\n1 "C:\\jobs\\a.dat"\n[Plot]\n3 "not-a-data-file.dat"\n'), ['b.dat', 'a.dat']);
-  assert.deepEqual(dataFileNamesFromSnproj(fixture('3d/NET_B.snproj')), ['NET_B.dat']);
+  assert.deepEqual(dataFileNamesFromSnproj(publicJob('control').read('snproj')), ['Network3D_B.dat']);
   assert.deepEqual(dataFileNamesFromSnproj(''), []);
 });

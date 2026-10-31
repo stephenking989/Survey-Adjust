@@ -107,7 +107,7 @@ export function settingsFromSnproj(text, base = defaultSettings()) {
 }
 
 /**
- * The data file names listed under [DataFileList] in a .snproj, in order, e.g.  3 "NET_B.dat".
+ * The data file names listed under [DataFileList] in a .snproj, in order, e.g.  3 "Network.dat".
  * (The number in front is not interpreted: only the quoted names and their order are used.)
  */
 export function dataFileNamesFromSnproj(text) {
