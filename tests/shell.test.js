@@ -65,13 +65,16 @@ test('app page links its assets and registers the root service worker', () => {
   assert.match(html, /name="viewport"/);
 });
 
-test('the 3D fixtures carry no student numbers or instrument serial numbers', () => {
-  // (The older 1D levelling fixture is not covered: it was published as supplied, with a level's serial in a comment.)
-  const files = fs.readdirSync(path.join(root, 'tests/fixtures/3d')).map((n) => `tests/fixtures/3d/${n}`);
-  assert.ok(files.length >= 9);
+test('no committed fixture carries a student number, instrument serial number or crew tag', () => {
+  // Every real job under tests/fixtures (the git-ignored local/ folder is skipped: it is never committed).
+  const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((d) => (
+    d.isDirectory() ? (d.name === 'local' ? [] : walk(`${dir}/${d.name}`)) : [`${dir}/${d.name}`]));
+  const files = walk('tests/fixtures');
+  assert.ok(files.length >= 13);
   for (const f of files) {
     const text = read(f);
     assert.ok(!/\bW\d{7}\b/.test(text), `${f} contains a student number`);
     assert.ok(!/s\/n\s*\d{5,}/i.test(text), `${f} contains an instrument serial number`);
+    assert.ok(!/crew\s*\d/i.test(text), `${f} contains a crew tag`);
   }
 });

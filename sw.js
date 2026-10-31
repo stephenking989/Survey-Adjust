@@ -4,7 +4,7 @@
 // Bump this string every time you deploy new code. The activate handler deletes
 // any cache with a different name, forcing browsers and installed PWAs to
 // discard stale files and re-fetch everything. (Same convention as FieldBook.)
-const CACHE_NAME = 'survey-adjust-v0.2.0';
+const CACHE_NAME = 'survey-adjust-v0.2.1';
 
 const APP_SHELL = [
   './',
