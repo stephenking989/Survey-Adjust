@@ -102,6 +102,19 @@ export function approximateStations(parsed, stations, make, opts = {}) {
       const p = locate(A, a, azimuth(A, F) + a.angle * DEG);
       if (p) place(a.to, p.n, p.e, p.z);
     }
+    // A B (azimuth) record and a D (distance) record between the same two stations fix the unknown one
+    // from the known one, the way a bearing and a distance would on paper.
+    for (const b of azimuths) {
+      for (const d of sloped) {
+        if (d.type !== 'D') continue;
+        const forward = d.from === b.from && d.to === b.to;
+        const backward = d.from === b.to && d.to === b.from;
+        if (!forward && !backward) continue;
+        const A = known(b.from); const T = known(b.to);
+        if (A && !T) { const p = locate(A, d, b.azimuth * DEG); if (p) place(b.to, p.n, p.e, p.z); }
+        else if (T && !A) { const p = locate(T, d, b.azimuth * DEG + Math.PI); if (p) place(b.from, p.n, p.e, p.z); }
+      }
+    }
     if (added.length === before) break;
   }
   void sloped;
