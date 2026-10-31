@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f5c6e" />
+  <meta name="description" content="Offline least squares adjustment for surveyors - 1D levelling" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Survey-Adjust" />
+  <title>Survey-Adjust</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Survey-Adjust</h1>
+      <p class="sub">Least squares adjustment &middot; 1D levelling <span id="offlineBadge" class="badge" hidden>offline ready</span></p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card" aria-labelledby="h-job">
+      <h2 id="h-job"><span class="step">1</span> Job file</h2>
+      <label class="btn primary file-btn" for="datInput">Open .dat file</label>
+      <input id="datInput" type="file" class="visually-hidden" />
+      <p class="muted" id="fileInfo">No file loaded. Pick a STAR*NET <code>.dat</code> from your phone or a USB stick.</p>
+      <details>
+        <summary>Paste data instead</summary>
+        <textarea id="pasteArea" rows="6" spellcheck="false" autocapitalize="off" autocomplete="off"
+                  placeholder="E 100 1000.000 !&#10;L 100-A 0.512 120.5"></textarea>
+        <button type="button" class="btn" id="usePaste">Use pasted text</button>
+      </details>
+      <button type="button" class="btn link" id="sampleBtn">Try the sample job (LEVEL_JOB)</button>
+    </section>
+
+    <section class="card" aria-labelledby="h-set">
+      <h2 id="h-set"><span class="step">2</span> Project settings</h2>
+      <p class="muted">STAR*NET keeps these in the <code>.snproj</code>, not the <code>.dat</code>.</p>
+      <div class="field">
+        <label for="levelStdErr">Differential level std error <span id="levelUnit">(m per km)</span></label>
+        <input id="levelStdErr" type="number" inputmode="decimal" step="any" min="0" value="0.0005" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="chiPercent">Chi-square level (%)</label>
+          <input id="chiPercent" type="number" inputmode="decimal" step="any" min="0.1" max="50" value="5" />
+        </div>
+        <div class="field">
+          <label for="stdResFlag">Flag |StdRes| over</label>
+          <input id="stdResFlag" type="number" inputmode="decimal" step="any" min="0" value="3" />
+        </div>
+      </div>
+      <details>
+        <summary>More</summary>
+        <label class="check"><input id="scaleFactor" type="checkbox" checked /> Scale std devs by the total error factor (as STAR*NET does)</label>
+        <label class="btn file-btn small" for="snprojInput">Load settings from .snproj</label>
+        <input id="snprojInput" type="file" class="visually-hidden" />
+      </details>
+    </section>
+
+    <section class="card" aria-labelledby="h-run">
+      <h2 id="h-run"><span class="step">3</span> Adjust</h2>
+      <button type="button" class="btn primary big" id="adjustBtn" disabled>Adjust</button>
+      <div id="errorBox" class="alert error" role="alert" hidden></div>
+    </section>
+
+    <section id="results" class="card" aria-labelledby="h-res" hidden>
+      <h2 id="h-res">Results</h2>
+      <div id="verdict" class="verdict"></div>
+      <dl id="summary" class="summary"></dl>
+      <div class="legend"><span class="key warn"></span> failed test / warning <span class="key flag"></span> |StdRes| over limit</div>
+      <pre id="report" class="report" tabindex="0" aria-label="Adjustment report"></pre>
+      <div class="actions">
+        <button type="button" class="btn" id="dlReport">Download report (.lst)</button>
+        <span class="csv">
+          <select id="csvFormat" aria-label="CSV format">
+            <option value="PE">CSV: Point, Elevation</option>
+            <option value="PNEZD">CSV: PNEZD</option>
+          </select>
+          <button type="button" class="btn" id="dlCsv">Download CSV</button>
+        </span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p class="muted">Runs entirely in your browser; nothing is uploaded. Engine v<span id="ver"></span>.</p>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
