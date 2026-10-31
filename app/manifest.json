@@ -1,0 +1,35 @@
+{
+  "name": "Survey-Adjust",
+  "short_name": "Survey-Adjust",
+  "description": "Offline least squares adjustment for surveyors - 1D levelling",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f5c6e",
+  "theme_color": "#0f5c6e",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
+  "lang": "en-US",
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "text/plain": [
+          ".dat"
+        ]
+      },
+      "launch_type": "single-client"
+    }
+  ]
+}

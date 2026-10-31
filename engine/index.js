@@ -13,7 +13,7 @@ import { defaultSettings, linearUnitsFromDat } from './project.js';
 export { parseDat, DatParseError, RECORD_PARSERS } from './parser.js';
 export { adjustLevelling, AdjustmentError } from './level.js';
 export { buildReport, exportCsv, ENGINE_NAME, ENGINE_VERSION } from './report.js';
-export { defaultSettings, settingsFromSnproj, parseSnprojRaw, LINEAR_UNITS } from './project.js';
+export { defaultSettings, settingsFromSnproj, parseSnprojRaw, linearUnitsFromDat, LINEAR_UNITS } from './project.js';
 export { chiSquareTest, chiSquareQuantile, normalQuantile } from './stats.js';
 export { Matrix, cholesky, choleskySolve, inverseSPD } from './matrix.js';
 

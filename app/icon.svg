@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0f5c6e"/>
+  <!-- levelling run: benchmark, turning points, closing line -->
+  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 340 L190 250 L290 300 L400 170"/>
+    <path d="M96 400 H416" stroke-width="14" opacity=".55"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="96" cy="340" r="26"/>
+    <circle cx="190" cy="250" r="20"/>
+    <circle cx="290" cy="300" r="20"/>
+    <circle cx="400" cy="170" r="26"/>
+  </g>
+</svg>
