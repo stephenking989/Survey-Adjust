@@ -97,13 +97,12 @@ test('runAdjustment routes level files and total-station files, and rejects a mi
   assert.throws(() => detectKind(parseDat('E A 100 !\nL A-B 1 100\nD A-B 100\n')), AdjustmentError);
 });
 
-// ---- Second real job (local-only fixture): one control point, fixed azimuth, M/DN/DV records ----
+// ---- Second real job (tests/fixtures/3d): one control point, fixed azimuth, M/DN/DV records ----
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const file = (e) => path.join(here, 'fixtures', 'local', `NET_B.${e}`);
-const have = ['dat', 'lst', 'pts', 'snproj'].every((e) => fs.existsSync(file(e)));
+const file = (e) => path.join(here, 'fixtures', '3d', `NET_B.${e}`);
 
-test('NET_B: counts, error factor, chi-square and coordinates match the STAR*NET run', { skip: have ? false : 'local fixture NET_B.* not present' }, () => {
+test('NET_B: counts, error factor, chi-square and coordinates match the STAR*NET run', () => {
   const s = settingsFromSnproj(fs.readFileSync(file('snproj'), 'utf8'));
   const r = runAdjustment(fs.readFileSync(file('dat'), 'utf8'), s).result;
   assert.deepEqual([r.stats.nStations, r.stats.nObservations, r.stats.nUnknowns, r.stats.dof], [9, 246, 50, 196]);
