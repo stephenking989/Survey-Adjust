@@ -1,0 +1,32 @@
+# Survey-Adjust sample: a 2D multi-loop traverse network.
+# The observations are the "Trav2D" example from the STAR*NET reference manual (appendix A, example 1).
+# One fixed point (1), one fixed bearing (8 to 7), two traverses, and a tie-in course from 9 to 5.
+# Suggested options: distance 0.003 m, angle and direction std error 3", no centering error.
+.UNITS FEETUS
+.UNITS DMS
+.ORDER NE
+.ORDER ATFROMTO
+.2D
+
+C1    5045.572 5495.338 ! !                  # fixed coordinates
+C6    5000                  5190             # approximate coordinates
+
+TB 6                                         # traverse backsight to point 6
+T1    99-47-25 205.03
+T2    115-10-00 134.19
+T3    94-51-53 105.44
+T4    216-46-09 161.57 'Existing post
+T5    106-26-42 160.71 'Iron pipe
+T6    86-57-49 308.30
+TE 1                                         # end this loop at point 1
+
+TB 2                                         # traverse backsight to point 2
+T3    225-47-02 115.41
+T7    97-31-36 284.40
+T8    115-14-57 191.66
+T9    156-15-44 166.90
+M 9-8-5 83-45-28 161.95                      # a tie-in course to 5
+T 10  106-12-32 151.34
+TE 6  164-00-42 1                            # end at 6, turn angle into 1
+
+B 8-7 n79-52-31e !                           # fixed bearing

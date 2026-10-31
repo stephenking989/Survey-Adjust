@@ -382,13 +382,93 @@ function parseDN(t, ctx) {
 /** DM to direction distance zenith [stdErrs] [HI/HT]    direction + slope distance + zenith */
 function parseDM(t, ctx) {
   const set = inSet(ctx, 'DM');
-  need(t, 4, ctx, 'DM to direction distance zenith [HI/HT]');
-  const tail = parseTail(t.slice(4), ctx);
+  // 2D format is "DM to direction distance [stdErrs]"; 3D format adds the zenith after the distance.
+  // In 2D mode a zenith is only recognised when written as D-M-S (3D data entered in a 2D job).
+  const hasZenith = ctx.state.dimension === 3 || (t.length > 3 && /-/.test(t[3]) && !Number.isNaN(parseAngle(t[3], ctx.state.units)));
+  need(t, hasZenith ? 4 : 3, ctx, hasZenith ? 'DM to direction distance zenith [HI/HT]' : 'DM to direction distance [stdErrs]');
+  const tail = parseTail(t.slice(hasZenith ? 4 : 3), ctx);
   return {
     type: 'DM', set: set.id, at: set.at, to: t[0],
-    direction: ang(t[1], ctx, 'direction'), distance: num(t[2], ctx, 'distance'), zenith: ang(t[3], ctx, 'zenith'),
-    hi: tail.hi, ht: tail.ht, stdErr: errsAs(tail.errs, ['direction', 'distance', 'zenith']), description: ctx.description,
+    direction: ang(t[1], ctx, 'direction'), distance: num(t[2], ctx, 'distance'), zenith: hasZenith ? ang(t[3], ctx, 'zenith') : null,
+    hi: tail.hi, ht: tail.ht, stdErr: errsAs(tail.errs, hasZenith ? ['direction', 'distance', 'zenith'] : ['direction', 'distance']), description: ctx.description,
   };
+}
+
+// ---- Traverses: TB ... T ... T ... TE --------------------------------------
+// A traverse is a chain of turned angles and distances. The three record types are kept as read and
+// turned into ordinary A (angle) and D (distance) records by expandTraverses() once the file is read,
+// so the adjustment needs no special case for them. (STAR*NET manual, ch. 5, Traverse Data Type.)
+
+/** TB backsight-station [description] */
+function parseTB(t, ctx) {
+  need(t, 1, ctx, 'TB backsight-station');
+  if (/^[NSns]?[\d.]+-[\d.]+/.test(t[0]) || /^[bB]=/.test(t[0])) {
+    ctx.fail('a traverse that starts from a fixed bearing is not supported yet: backsight to a station (TB name)');
+  }
+  return { type: 'TB', backsight: t[0], description: ctx.description };
+}
+
+/** T at angle distance [angleStdErr distStdErr]   (2D format) */
+function parseT(t, ctx) {
+  need(t, 3, ctx, 'T at angle distance [stdErrs]');
+  if (ctx.state.dimension === 3) ctx.fail('3D traverse lines (with zenith angles) are not supported yet; use M or A and DV records, or run a 2D job');
+  const tail = parseTail(t.slice(3), ctx);
+  return {
+    type: 'T', at: t[0], angle: ang(t[1], ctx, 'angle'), distance: num(t[2], ctx, 'distance'),
+    stdErr: errsAs(tail.errs, ['angle', 'distance']), description: ctx.description,
+  };
+}
+
+/** TE end-station [close-angle close-station [angleStdErr]] */
+function parseTE(t, ctx) {
+  need(t, 1, ctx, 'TE end-station [close-angle close-station [stdErr]]');
+  let close = null;
+  if (t.length > 1) {
+    need(t, 3, ctx, 'TE end-station close-angle close-station [stdErr]');
+    if (/^[NSns]?[\d.]+-[\d.]+/.test(t[2]) || /^[bB]=/.test(t[2])) ctx.fail('closing a traverse into a fixed bearing is not supported yet: close to a station');
+    const tail = parseTail(t.slice(3), ctx);
+    close = { angle: ang(t[1], ctx, 'closing angle'), to: t[2], stdErr: errsAs(tail.errs, ['angle']) };
+  }
+  return { type: 'TE', end: t[0], close, description: ctx.description };
+}
+
+/**
+ * Replace each TB ... T ... TE group by the A and D records it stands for:
+ *   T s_i ang dist   ->   M  at s_i  from (previous point)  to (next point)  ang dist
+ *                         (the "measure" record: an angle and a distance from s_i, the same thing)
+ * The previous point of the first T is the TB backsight; the next point of the last T is the TE station.
+ * A closing angle on TE becomes an A record at the end station from the last T station.
+ */
+function expandTraverses(records, fileIndex, fail) {
+  const out = [];
+  let open = null;      // { tb, ts: [] }
+  let id = 0;
+  for (const r of records) {
+    if (r.type === 'TB') {
+      if (open) { fail(r.line, `TB inside an open traverse (opened on line ${open.tb.line}; missing TE)`); continue; }
+      open = { tb: r, ts: [], id: ++id };
+    } else if (r.type === 'T') {
+      if (!open) { fail(r.line, 'T line outside a traverse (no TB before it)'); continue; }
+      open.ts.push(r);
+    } else if (r.type === 'TE') {
+      if (!open) { fail(r.line, 'TE without a traverse (no TB before it)'); continue; }
+      const { tb, ts } = open;
+      const base = { file: fileIndex, inline: r.inline, dim: r.dim, traverse: open.id };
+      ts.forEach((c, i) => {
+        const prev = i === 0 ? tb.backsight : ts[i - 1].at;
+        const next = i === ts.length - 1 ? r.end : ts[i + 1].at;
+        out.push({ ...base, inline: c.inline, dim: c.dim, type: 'M', at: c.at, from: prev, to: next, angle: c.angle, distance: c.distance, zenith: null, hi: null, ht: null, stdErr: { angle: c.stdErr.angle, distance: c.stdErr.distance }, description: c.description, line: c.line });
+      });
+      if (r.close && ts.length) {
+        out.push({ ...base, type: 'A', at: r.end, from: ts[ts.length - 1].at, to: r.close.to, angle: r.close.angle, stdErr: { angle: r.close.stdErr.angle }, description: r.description, line: r.line });
+      }
+      open = null;
+    } else {
+      out.push(r);
+    }
+  }
+  if (open) fail(open.tb.line, 'traverse never closed with TE');
+  return out;
 }
 
 /** DV to distance zenith [HI/HT]    (inside a set) or  DV from-to distance zenith [HI/HT] (outside) */
@@ -422,6 +502,9 @@ export const RECORD_PARSERS = {
   DN: parseDN,
   DM: parseDM,
   DV: parseDV,
+  TB: parseTB,
+  T: parseT,
+  TE: parseTE,
 };
 
 // ---------------------------------------------------------------------------
@@ -449,7 +532,7 @@ export function parseDat(text, opts = {}) {
     const line = i + 1;
     const { body, description } = splitLine(lines[i]);
     if (!body) continue;
-    const tokens = body.split(/\s+/);
+    let tokens = body.split(/\s+/);
     const head = tokens[0];
 
     if (head.startsWith('.')) {
@@ -462,7 +545,12 @@ export function parseDat(text, opts = {}) {
       continue;
     }
 
-    const code = head.toUpperCase();
+    let code = head.toUpperCase();
+    // The code may be written straight against a station name that starts with a digit: "C1 5000 5000", "T2 90-00-00 100".
+    if (!RECORD_PARSERS[code]) {
+      const glued = /^([A-Za-z]{1,2})(\d.*)$/.exec(head);
+      if (glued && RECORD_PARSERS[glued[1].toUpperCase()]) { code = glued[1].toUpperCase(); tokens = [code, glued[2], ...tokens.slice(1)]; }
+    }
     const ctx = {
       line, state, description,
       fail(message) { throw new DatParseError(message, line); },
@@ -487,11 +575,16 @@ export function parseDat(text, opts = {}) {
     // Snapshot of the inline options in force here: .REF, .CURVE, .EDM and .ADDC can change
     // part-way through a file, and each observation must use the setting on its own line.
     rec.inline = { curve: state.curve, refraction: state.refraction, edm: state.edm, addCentering: state.addCentering };
+    rec.dim = state.dimension;     // 2 or 3: the data format in force on this line
     records.push(rec);
   }
   if (state.openSet) {
     warnings.push({ line: state.openSet.line, message: `Direction set ${state.openSet.id} at ${state.openSet.at} was never closed with DE` });
   }
+  const expanded = expandTraverses(records, fileIndex, (line, message) => {
+    if (!opts.collectErrors) throw new DatParseError(message, line);
+    errors.push({ line, file: fileIndex, message });
+  });
   for (const w of warnings) w.file = fileIndex;
-  return { options, state, records, warnings, errors };
+  return { options, state, records: expanded, warnings, errors };
 }

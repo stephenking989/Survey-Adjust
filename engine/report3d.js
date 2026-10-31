@@ -41,9 +41,10 @@ export function buildReport3D(result, opts = {}) {
   const coordHead = en ? ['E', 'N'] : ['N', 'E'];
   const pick = (s) => (en ? [s.e, s.n, s.z] : [s.n, s.e, s.z]);
   const pickSd = (s) => (en ? [s.stdDev[1], s.stdDev[0], s.stdDev[2]] : [s.stdDev[0], s.stdDev[1], s.stdDev[2]]);
+  const two = result.type === '2D';
   const k = Number.isFinite(opts.refraction) ? opts.refraction : settings.refraction;
 
-  push(center(`${ENGINE_NAME} Version ${ENGINE_VERSION}  -  3D Adjustment`));
+  push(center(`${ENGINE_NAME} Version ${ENGINE_VERSION}  -  ${two ? '2D' : '3D'} Adjustment`));
   push(center(`Run Date: ${fmtRunDate(opts.runDate || new Date())}`));
   push(); push();
   heading('Summary of Files Used and Option Settings');
@@ -53,13 +54,15 @@ export function buildReport3D(result, opts = {}) {
   push();
   push(center('Project Option Settings')); push();
   push('      Survey-Adjust Run Mode              : Adjust with Error Propagation');
-  push('      Type of Adjustment                  : 3D');
+  push(`      Type of Adjustment                  : ${two ? '2D' : '3D'}`);
   push(`      Project Units                       : ${u}; DMS`);
   push('      Coordinate System                   : LOCAL');
   push(`      Input/Output Coordinate Order       : ${en ? 'East-North' : 'North-East'}`);
-  push('      Distance/Vertical Data Type         : Slope/Zenith');
-  push(`      Default Coefficient of Refraction   : ${f(settings.refraction, 6)}`);
-  push(`      Earth Radius                        : ${f(settings.earthRadius, 2)} ${u}`);
+  if (!two) {
+    push('      Distance/Vertical Data Type         : Slope/Zenith');
+    push(`      Default Coefficient of Refraction   : ${f(settings.refraction, 6)}`);
+    push(`      Earth Radius                        : ${f(settings.earthRadius, 2)} ${u}`);
+  }
   push(`      Chi-Square Test Significance        : ${f(settings.chiSquarePercent, 2)}%`);
   push(`      Std Devs Scaled by Error Factor     : ${stats.errorFactorApplied !== 1 ? 'Yes (chi-square test failed)' : 'No'}`);
   push();
@@ -70,10 +73,10 @@ export function buildReport3D(result, opts = {}) {
   push(`        Angles                            : ${padL(f(ins.angle, 6), 11)} Seconds`);
   push(`        Directions                        : ${padL(f(ins.direction, 6), 11)} Seconds`);
   push(`        Azimuths & Bearings               : ${padL(f(ins.azimuth, 6), 11)} Seconds`);
-  push(`        Zeniths                           : ${padL(f(ins.zenith, 6), 11)} Seconds`);
+  if (!two) push(`        Zeniths                           : ${padL(f(ins.zenith, 6), 11)} Seconds`);
   push(`        Centering Error Instrument        : ${padL(f(ins.centeringInstrument, 6), 11)} ${u}`);
   push(`        Centering Error Target            : ${padL(f(ins.centeringTarget, 6), 11)} ${u}`);
-  push(`        Centering Error Vertical          : ${padL(f(ins.centeringVertical, 6), 11)} ${u}`);
+  if (!two) push(`        Centering Error Vertical          : ${padL(f(ins.centeringVertical, 6), 11)} ${u}`);
   push();
   if (result.warnings.length) {
     heading('Warnings');
@@ -89,26 +92,26 @@ export function buildReport3D(result, opts = {}) {
   const fixed = control.filter((s) => s.status.every((x) => x === 'fixed'));
   const partial = control.filter((s) => !s.status.every((x) => x === 'fixed'));
   if (fixed.length) {
-    push(`Fixed Stations              ${padL(coordHead[0], 1)}                 ${coordHead[1]}          Elev   Description`);
-    for (const s of fixed) { const c = pick(s.input); push(`${padR(s.name, 16)}${padL(f(c[0], 4), 15)}${padL(f(c[1], 4), 15)}${padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd()); }
+    push(`Fixed Stations              ${padL(coordHead[0], 1)}                 ${coordHead[1]}${two ? '' : '          Elev'}   Description`);
+    for (const s of fixed) { const c = pick(s.input); push(`${padR(s.name, 16)}${padL(f(c[0], 4), 15)}${padL(f(c[1], 4), 15)}${two ? '' : padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd()); }
     push();
   }
   if (partial.length) {
-    push(`Partially Fixed             ${coordHead[0]}                 ${coordHead[1]}          Elev   Description`);
-    push('                          StdErr            StdErr      StdErr');
+    push(`Partially Fixed             ${coordHead[0]}                 ${coordHead[1]}${two ? '' : '          Elev'}   Description`);
+    push(two ? '                          StdErr            StdErr' : '                          StdErr            StdErr      StdErr');
     for (const s of partial) {
       const c = pick(s.input); const sd = en ? [s.input.sd[1], s.input.sd[0], s.input.sd[2]] : s.input.sd;
       const st = en ? [s.status[1], s.status[0], s.status[2]] : s.status;
       const cell = (i) => (st[i] === 'weighted' ? f(sd[i], 4) : (st[i] === 'fixed' ? '!' : '*'));
-      push(`${padR(s.name, 16)}${padL(f(c[0], 4), 15)}${padL(f(c[1], 4), 15)}${padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd());
-      push(`${' '.repeat(26)}${padL(cell(0), 6)}${padL(cell(1), 18)}${padL(cell(2), 12)}`);
+      push(`${padR(s.name, 16)}${padL(f(c[0], 4), 15)}${padL(f(c[1], 4), 15)}${two ? '' : padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd());
+      push(`${' '.repeat(26)}${padL(cell(0), 6)}${padL(cell(1), 18)}${two ? '' : padL(cell(2), 12)}`);
     }
     push();
   }
   const free = result.stations.filter((s) => s.status.every((x) => x === 'free'));
   if (free.length) {
-    push(`Free Stations               ${coordHead[0]}                 ${coordHead[1]}          Elev   Description`);
-    for (const s of free) { const c = pick(s.input); push(`${padR(s.name, 16)}${padL(f(c[0], 4), 15)}${padL(f(c[1], 4), 15)}${padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd()); }
+    push(`Free Stations               ${coordHead[0]}                 ${coordHead[1]}${two ? '' : '          Elev'}   Description`);
+    for (const s of free) { const c = pick(s.input); push(`${padR(s.name, 16)}${padL(f(c[0], 4), 15)}${padL(f(c[1], 4), 15)}${two ? '' : padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd()); }
     push();
   }
   const kinds = [['dist', 'Distance', `Meters`], ['zen', 'Zenith', 'DMS'], ['dir', 'Direction', 'DMS'], ['ang', 'Angle', 'DMS'], ['az', 'Azimuth/Bearing', 'DMS']];
@@ -183,8 +186,8 @@ export function buildReport3D(result, opts = {}) {
 
   // ---- Adjusted coordinates -------------------------------------------------
   heading(`Adjusted Coordinates (${u})`);
-  push(`Station                   ${coordHead[0]}              ${coordHead[1]}          Elev   Description`);
-  for (const s of result.stations) { const c = pick(s); push(`${padR(s.name, 16)}${padL(f(c[0], 4), 14)}${padL(f(c[1], 4), 15)}${padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd()); }
+  push(`Station                   ${coordHead[0]}              ${coordHead[1]}${two ? '' : '          Elev'}   Description`);
+  for (const s of result.stations) { const c = pick(s); push(`${padR(s.name, 16)}${padL(f(c[0], 4), 14)}${padL(f(c[1], 4), 15)}${two ? '' : padL(f(c[2], 4), 12)}  ${s.description}`.trimEnd()); }
   push();
 
   // ---- Adjusted observations --------------------------------------------------
@@ -227,8 +230,8 @@ export function buildReport3D(result, opts = {}) {
   // ---- Error propagation -------------------------------------------------------
   heading('Error Propagation');
   push(center(`Station Coordinate Standard Deviations (${u})`)); push();
-  push(`Station                     ${coordHead[0]}             ${coordHead[1]}            Elev`);
-  for (const s of result.stations) { const d = pickSd(s); push(`${padR(s.name, 16)}${padL(f(d[0], 6), 14)}${padL(f(d[1], 6), 14)}${padL(f(d[2], 6), 14)}`); }
+  push(`Station                     ${coordHead[0]}             ${coordHead[1]}${two ? '' : '            Elev'}`);
+  for (const s of result.stations) { const d = pickSd(s); push(`${padR(s.name, 16)}${padL(f(d[0], 6), 14)}${padL(f(d[1], 6), 14)}${two ? '' : padL(f(d[2], 6), 14)}`); }
   push();
   if (opts.ellipses) {
     const { confidence, stations, relative } = opts.ellipses;
@@ -240,16 +243,16 @@ export function buildReport3D(result, opts = {}) {
     };
     push(center(`Station Coordinate Error Ellipses (${u})`));
     push(center(`Confidence Region = ${conf}`)); push();
-    push('Station                 Semi-Major    Semi-Minor   Azimuth of       Elev');
+    push(`Station                 Semi-Major    Semi-Minor   Azimuth of${two ? '' : '       Elev'}`);
     push('                            Axis          Axis     Major Axis');
-    for (const e of stations) push(`${padR(e.name, 16)}${padL(f(e.semiMajor, 6), 18)}${padL(f(e.semiMinor, 6), 14)}${padL(az(e.azimuth), 11)}${padL(f(e.vertical, 6), 13)}`);
+    for (const e of stations) push(`${padR(e.name, 16)}${padL(f(e.semiMajor, 6), 18)}${padL(f(e.semiMinor, 6), 14)}${padL(az(e.azimuth), 11)}${two ? '' : padL(f(e.vertical, 6), 13)}`);
     push();
     if (relative.length) {
       push(center(`Relative Error Ellipses (${u})`));
       push(center(`Confidence Region = ${conf}`)); push();
-      push('Stations                Semi-Major    Semi-Minor   Azimuth of     Vertical');
+      push(`Stations                Semi-Major    Semi-Minor   Azimuth of${two ? '' : '     Vertical'}`);
       push('From       To               Axis          Axis     Major Axis');
-      for (const e of relative) push(`${padR(e.from, 11)}${padR(e.to, 11)}${padL(f(e.semiMajor, 6), 12)}${padL(f(e.semiMinor, 6), 14)}${padL(az(e.azimuth), 11)}${padL(f(e.vertical, 6), 13)}`);
+      for (const e of relative) push(`${padR(e.from, 11)}${padR(e.to, 11)}${padL(f(e.semiMajor, 6), 12)}${padL(f(e.semiMinor, 6), 14)}${padL(az(e.azimuth), 11)}${two ? '' : padL(f(e.vertical, 6), 13)}`);
       push();
     }
   }
