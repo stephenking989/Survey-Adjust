@@ -466,6 +466,9 @@ export function adjustNetwork3D(parsed, settings) {
     observations: resultObs,
     coordinateObservations: resultCoordObs,
     iterations,
+    // Covariance of the adjusted coordinates, for error ellipses (see ellipse.js). index maps a station
+    // name to its [N, E, Z] rows in Q, or -1 for a component that is held fixed.
+    covariance: { Q: Qxx, index: new Map(used.map((s) => [s.name, pidx.get(s)])), scale },
     stats: {
       nStations: used.length,
       nObservations: nObs,

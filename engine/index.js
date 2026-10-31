@@ -12,11 +12,13 @@ import { adjustLevelling, AdjustmentError } from './level.js';
 import { adjustNetwork3D, RHO } from './network3d.js';
 import { buildReport, exportCsv } from './report.js';
 import { buildReport3D, exportCsv3D } from './report3d.js';
+import { ellipseTables } from './ellipse.js';
 import { defaultSettings, linearUnitsFromDat, LINEAR_UNITS } from './project.js';
 
 export { parseDat, DatParseError, RECORD_PARSERS, parseAngle, parseBearing } from './parser.js';
 export { parseDataFiles, DataFileError } from './files.js';
 export { adviseOnAdjustment, worstResiduals } from './advice.js';
+export { ellipseTables, stationEllipse, relativeEllipse, connectedPairs } from './ellipse.js';
 export { adjustLevelling, AdjustmentError } from './level.js';
 export { adjustNetwork3D, errorModel } from './network3d.js';
 export { buildReport, exportCsv } from './report.js';
@@ -74,8 +76,9 @@ export function runAdjustment(input, settings = defaultSettings(), opts = {}) {
     }
     s.unitsInfo = LINEAR_UNITS[s.linearUnits];
     const result = adjustNetwork3D(parsed, s);
-    const report = buildReport3D(result, common);
-    return { kind, parsed, result, report, csv: (format, o) => exportCsv3D(result, { format, ...o }) };
+    const ellipses = ellipseTables({ parsed, result });
+    const report = buildReport3D(result, { ...common, ellipses });
+    return { kind, parsed, result, ellipses, report, csv: (format, o) => exportCsv3D(result, { format, ...o }) };
   } catch (err) {
     throw locateError(err, parsed);
   }
