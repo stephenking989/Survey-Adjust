@@ -2,7 +2,7 @@
 // a project of several data files (Data tab, with an in-page editor), the project options
 // (Options tab) and the results pages (Results tab).
 import {
-  runAdjustment, checkData, parseDataFiles, detectKind, defaultSettings, settingsFromSnproj, dataFileNamesFromSnproj,
+  runAdjustment, checkData, parseDataFiles, detectKind, gsiToDat, looksLikeGsi, GsiError, defaultSettings, settingsFromSnproj, dataFileNamesFromSnproj,
   LINEAR_UNITS, linearUnitsFromDat, AdjustmentError, DataFileError, ENGINE_VERSION,
 } from '../engine/index.js';
 import * as store from './store.js';
@@ -14,7 +14,7 @@ const el = {
   tabs: [...document.querySelectorAll('.tab')], resultsDot: $('resultsDot'),
   viewData: $('view-data'), viewEditor: $('view-editor'), viewOptions: $('view-options'), viewResults: $('view-results'),
   projectName: $('projectName'), fileList: $('fileList'), fileEmpty: $('fileEmpty'), addInput: $('addInput'), newFileBtn: $('newFileBtn'),
-  sampleBtn: $('sampleBtn'), sample2dBtn: $('sample2dBtn'), sample3dBtn: $('sample3dBtn'), addNote: $('addNote'),
+  sampleBtn: $('sampleBtn'), sampleGsiBtn: $('sampleGsiBtn'), gsiCoords: $('gsiCoords'), gsiVertical: $('gsiVertical'), gsiStation: $('gsiStation'), sample2dBtn: $('sample2dBtn'), sample3dBtn: $('sample3dBtn'), addNote: $('addNote'),
   kindInfo: $('kindInfo'), checkBtn: $('checkBtn'), adjustBtn: $('adjustBtn'), problems: $('problems'),
   edCheck: $('edCheck'), edAdjust: $('edAdjust'), edProblems: $('edProblems'),
   snprojInput: $('snprojInput'), optInfo: $('optInfo'), resetOpts: $('resetOpts'), optError: $('optError'),
@@ -110,16 +110,39 @@ function renderFileList() {
 
 el.projectName.addEventListener('change', () => store.setProjectName(el.projectName.value));
 
+/** Convert one Leica GSI file and add the .dat; returns the note to show, and pushes warnings for the problems list. */
+function importGsi(name, text, warnings) {
+  try {
+    const r = gsiToDat(text, { coords: el.gsiCoords.value, vertical: el.gsiVertical.value, station: el.gsiStation.value.trim() || undefined });
+    const datName = name.replace(/\.[^.]*$/, '') + '.dat';
+    store.addFile(datName, r.text);
+    for (const w of r.warnings) warnings.push({ severity: 'warning', message: `${name}${w.line ? `, GSI line ${w.line}` : ''}: ${w.message}` });
+    const s = r.summary;
+    return `Converted ${name} to ${datName}: ${s.dimension}D, ${s.stations.length} station${s.stations.length === 1 ? '' : 's'}, ${s.sets} direction set${s.sets === 1 ? '' : 's'}, ${s.directionsWithDistance + s.directionsOnly} pointings${s.face2 ? ` (${s.face2} on face 2, reduced to face 1)` : ''}. Check the stations and heights, then set the instrument on the Options tab.`;
+  } catch (err) {
+    if (!(err instanceof GsiError)) throw err;
+    warnings.push({ severity: 'error', message: `${name}: ${err.message}` });
+    return `${name} could not be converted.`;
+  }
+}
+
 async function addFiles(fileList) {
   const picked = [...fileList];
   const notes = [];
   const projects = picked.filter((f) => /\.snproj$/i.test(f.name));
   const data = picked.filter((f) => !/\.snproj$/i.test(f.name));
   const first = store.getState().files.length === 0;
+  const warnings = [];
   for (const f of data) {
     const text = await f.text();
-    store.addFile(f.name, text);
+    if (/\.gsi$/i.test(f.name) || looksLikeGsi(text)) {
+      const note = importGsi(f.name, text, warnings);
+      if (note) notes.push(note);
+    } else {
+      store.addFile(f.name, text);
+    }
   }
+  if (warnings.length) showProblems(warnings);
   for (const p of projects) {
     const text = await p.text();
     putSettings(settingsFromSnproj(text));
@@ -162,6 +185,24 @@ async function loadSample(url, name, settings) {
   }
 }
 el.sampleBtn.addEventListener('click', () => loadSample('./samples/LEVEL_SAMPLE.dat', 'LEVEL_SAMPLE.dat', { levelStdErr: 0.0002 }));
+el.sampleGsiBtn.addEventListener('click', async () => {
+  if (store.getState().files.length && !confirm('Replace the current project with the GSI sample?')) return;
+  try {
+    const res = await fetch('./samples/GSI_SAMPLE.gsi');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    putSettings({ refraction: 0.07, instrument: { distanceConstant: 0.0007, distancePpm: 2, direction: 3, zenith: 3, angle: 4, azimuth: 4, centeringInstrument: 0, centeringTarget: 0, centeringVertical: 0 } });
+    saveSettings(readSettings());
+    store.replaceAll('GSI_SAMPLE', []);
+    const warnings = [];
+    const note = importGsi('GSI_SAMPLE.gsi', text, warnings);
+    el.addNote.textContent = note;
+    el.addNote.hidden = false;
+    if (warnings.length) showProblems(warnings); else clearProblems();
+  } catch (err) {
+    showProblems([{ severity: 'error', message: `Could not load the sample: ${err.message}` }]);
+  }
+});
 el.sample2dBtn.addEventListener('click', () => loadSample('./samples/2D_TRAVERSE.dat', '2D_TRAVERSE.dat', {
   instrument: { distanceConstant: 0.02, distancePpm: 0, direction: 5, angle: 5, azimuth: 5, centeringInstrument: 0, centeringTarget: 0 },
 }));
