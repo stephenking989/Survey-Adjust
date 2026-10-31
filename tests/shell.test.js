@@ -64,3 +64,14 @@ test('app page links its assets and registers the root service worker', () => {
   assert.match(read('app/app.js'), /serviceWorker\s*\.register\('\.\.\/sw\.js'\)/);
   assert.match(html, /name="viewport"/);
 });
+
+test('the 3D fixtures carry no student numbers or instrument serial numbers', () => {
+  // (The older 1D levelling fixture is not covered: it was published as supplied, with a level's serial in a comment.)
+  const files = fs.readdirSync(path.join(root, 'tests/fixtures/3d')).map((n) => `tests/fixtures/3d/${n}`);
+  assert.ok(files.length >= 9);
+  for (const f of files) {
+    const text = read(f);
+    assert.ok(!/\bW\d{7}\b/.test(text), `${f} contains a student number`);
+    assert.ok(!/s\/n\s*\d{5,}/i.test(text), `${f} contains an instrument serial number`);
+  }
+});

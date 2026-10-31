@@ -7,8 +7,7 @@ import { parseDat, parseAngle, parseBearing, DatParseError } from '../engine/par
 import { near } from './helpers.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const local = (n) => path.join(here, 'fixtures', 'local', n);
-const haveLocal = (n) => fs.existsSync(local(n));
+const local = (n) => path.join(here, 'fixtures', '3d', n);
 
 test('parseAngle: D-M-S, packed DMS, decimal degrees, signs', () => {
   near(assert, parseAngle('087-14-00.3'), 87 + 14 / 60 + 0.3 / 3600, 1e-12);
@@ -103,9 +102,9 @@ test('3D control with per-component std errors', () => {
   assert.deepEqual(p.records[2].status, { north: 'fixed', east: 'fixed', elevation: 'fixed' });
 });
 
-// ---- Real jobs (local-only fixtures; skipped when absent) -------------------
+// ---- Real jobs (tests/fixtures/3d) -----------------------------------------
 
-test('NET_A.dat parses completely: 192 DM, 24 sets, 25 C, no warnings', { skip: !haveLocal('NET_A.dat') }, () => {
+test('NET_A.dat parses completely: 192 DM, 24 sets, 25 C, no warnings', () => {
   const p = parseDat(fs.readFileSync(local('NET_A.dat'), 'utf8'));
   const count = (t) => p.records.filter((r) => r.type === t).length;
   assert.equal(count('DM'), 192);
@@ -119,7 +118,7 @@ test('NET_A.dat parses completely: 192 DM, 24 sets, 25 C, no warnings', { skip: 
   assert.equal(p.records.filter((r) => r.type === 'C' && r.status.north === 'weighted').length, 3);
 });
 
-test('NET_B.dat parses completely (B, DN, DV, M, DM)', { skip: !haveLocal('NET_B.dat') }, () => {
+test('NET_B.dat parses completely (B, DN, DV, M, DM)', () => {
   const p = parseDat(fs.readFileSync(local('NET_B.dat'), 'utf8'));
   const count = (t) => p.records.filter((r) => r.type === t).length;
   assert.equal(count('DM') + count('DN') + count('DV'), p.records.filter((r) => ['DM', 'DN', 'DV'].includes(r.type)).length);

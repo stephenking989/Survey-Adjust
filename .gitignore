@@ -4,5 +4,5 @@ Thumbs.db
 *.log
 .claude/
 
-# Private/third-party job data used for local validation only (see README)
+# Unsanitized originals of the 3D jobs, if kept locally. Use the sanitized copies in tests/fixtures/3d.
 tests/fixtures/local/

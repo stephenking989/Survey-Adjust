@@ -1,8 +1,8 @@
 // Validation against a real STAR*NET-PRO 14 3D run (NET_A): 25 stations,
 // 24 direction sets, 192 DM records (directions + slope distances + zeniths),
-// 3 weighted control points, two free resections. The job's files live in
-// tests/fixtures/local/ (git-ignored; the data carry a student number and an
-// instrument serial), so these tests skip when they are absent.
+// 3 weighted control points, two free resections. The files are in tests/fixtures/3d/
+// (the project path and the instrument serial number were removed from them; every
+// observation, coordinate and result is exactly as STAR*NET wrote it).
 //
 // Expected values are read from the STAR*NET .lst and .pts. Tolerances are the
 // precision STAR*NET printed (and in two places the small, documented residual
@@ -17,13 +17,11 @@ import { parseDat, adjustNetwork3D, settingsFromSnproj, LINEAR_UNITS, RHO_ARCSEC
 import { near } from './helpers.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const file = (e) => path.join(here, 'fixtures', 'local', `NET_A.${e}`);
-const have = fs.existsSync(file('dat')) && fs.existsSync(file('lst')) && fs.existsSync(file('pts')) && fs.existsSync(file('snproj'));
-const opt = { skip: have ? false : 'local fixture NET_A.* not present' };
+const file = (e) => path.join(here, 'fixtures', '3d', `NET_A.${e}`);
 const read = (e) => fs.readFileSync(file(e), 'utf8');
 
 let r; let lst; let pts;
-if (have) {
+{
   const s = settingsFromSnproj(read('snproj'));
   s.unitsInfo = LINEAR_UNITS.meters;
   r = adjustNetwork3D(parseDat(read('dat')), s);
@@ -32,7 +30,7 @@ if (have) {
 }
 const dms2s = (t) => { const m = /^(-?)(\d+)-(\d+)-(\d+\.\d+)$/.exec(t); const v = (+m[2]) * 3600 + (+m[3]) * 60 + +m[4]; return m[1] ? -v : v; };
 
-test('counts: 25 stations, 585 observations, 99 unknowns, 486 redundant', opt, () => {
+test('counts: 25 stations, 585 observations, 99 unknowns, 486 redundant', () => {
   assert.equal(r.stats.nStations, 25);
   assert.equal(r.stats.nObservations, 585);
   assert.equal(r.stats.nUnknowns, 99);
@@ -40,14 +38,14 @@ test('counts: 25 stations, 585 observations, 99 unknowns, 486 redundant', opt, (
   assert.deepEqual(r.stats.classes.map((c) => [c.name, c.count]), [['Coordinates', 9], ['Directions', 192], ['Distances', 192], ['Zeniths', 192]]);
 });
 
-test('error factor 0.968 and chi-square PASSED with bounds 0.937 / 1.063', opt, () => {
+test('error factor 0.968 and chi-square PASSED with bounds 0.937 / 1.063', () => {
   near(assert, r.stats.errorFactor, 0.968, 0.001);
   assert.equal(r.stats.chiSquare.passed, true);
   assert.equal(r.stats.chiSquare.lowerBound.toFixed(3), '0.937');
   assert.equal(r.stats.chiSquare.upperBound.toFixed(3), '1.063');
 });
 
-test('sum of squares of StdRes per class (listing: 10.431 / 195.223 / 164.004 / 86.009; total 455.666)', opt, () => {
+test('sum of squares of StdRes per class (listing: 10.431 / 195.223 / 164.004 / 86.009; total 455.666)', () => {
   const ss = Object.fromEntries(r.stats.classes.map((c) => [c.name, c.sumSq]));
   // Distances agree to the printed digit. The other classes are within 0.03 (0.007% of the total):
   // the whole free network sits a few micrometres (max 16) from STAR*NET's solution - see below.
@@ -58,7 +56,7 @@ test('sum of squares of StdRes per class (listing: 10.431 / 195.223 / 164.004 / 
   near(assert, r.stats.sumSqStdRes, 455.666, 0.05, 'total');
 });
 
-test('adjusted coordinates within 0.00002 m of the .pts (which is rounded to 0.00001 m)', opt, () => {
+test('adjusted coordinates within 0.00002 m of the .pts (which is rounded to 0.00001 m)', () => {
   let worst = 0;
   for (const s of r.stations) {
     const p = pts[s.name];
@@ -71,7 +69,7 @@ test('adjusted coordinates within 0.00002 m of the .pts (which is rounded to 0.0
   assert.ok(worst <= 0.00002, `worst coordinate difference ${worst}`);
 });
 
-test('std devs equal the listing UNSCALED because the chi-square test passed', opt, () => {
+test('std devs equal the listing UNSCALED because the chi-square test passed', () => {
   const i = lst.findIndex((l) => /Station Coordinate Standard Deviations/.test(l));
   let n = 0;
   for (let k = i; k < i + 40; k++) {
@@ -85,7 +83,7 @@ test('std devs equal the listing UNSCALED because the chi-square test passed', o
   assert.equal(r.stats.errorFactorApplied, 1);
 });
 
-test('every observation std error matches the listing (distances to 0.0001 m, angles to 0.01")', opt, () => {
+test('every observation std error matches the listing (distances to 0.0001 m, angles to 0.01")', () => {
   const rows = (head, tail, re) => { const a = lst.findIndex((l) => l.includes(head)); const b = lst.findIndex((l, i) => i > a && l.includes(tail)); return lst.slice(a, b).map((l) => re.exec(l)).filter(Boolean); };
   const dist = rows('Adjusted Distance Observations', 'Adjusted Zenith Observations', /^\s+(\S+)\s+(\S+)\s+(\d+\.\d+)\s+(-?\d+\.\d+)\s+(\d\.\d+)\s+(-?\d+\.\d)\*?\s+1:(\d+)/);
   const zen = rows('Adjusted Zenith Observations', 'Adjusted Direction Observations', /^\s+(\S+)\s+(\S+)\s+(\d+-\d+-\d+\.\d+)\s+(-?\d+-\d+-\d+\.\d+)\s+(-?\d+\.\d+)\s+(\d\.\d+)\s+(-?\d+\.\d)\*?\s+1:(\d+)/);
@@ -97,7 +95,7 @@ test('every observation std error matches the listing (distances to 0.0001 m, an
   mine('zen').forEach((o, i) => near(assert, o.sigma * RHO_ARCSEC, +zen[i][6], 0.0055, `zenith ${o.from}-${o.to} line ${o.line}`));
 });
 
-test('observation residuals agree with the listing (distance 0.0001 m, angle 0.1")', opt, () => {
+test('observation residuals agree with the listing (distance 0.0001 m, angle 0.1")', () => {
   const a = lst.findIndex((l) => l.includes('Adjusted Zenith Observations'));
   const b = lst.findIndex((l) => l.includes('Adjusted Direction Observations'));
   const zen = lst.slice(a, b).map((l) => /^\s+(\S+)\s+(\S+)\s+(\d+-\d+-\d+\.\d+)\s+(-?\d+-\d+-\d+\.\d+)\s+/.exec(l)).filter(Boolean);

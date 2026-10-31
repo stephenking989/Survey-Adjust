@@ -85,7 +85,7 @@ The last row corrects version 0.1, which scaled always. The levelling run (error
 | Max std dev difference vs `.lst` | | 0.0000005 m (the `.lst` has 6 decimals) |
 | Observations flagged `*` | 16 | 16, same ones |
 
-**3D networks** - two real STAR*NET runs. Their files contain personal identifiers (a student number, an instrument serial), so they are kept in the git-ignored `tests/fixtures/local/` and those tests skip when the files are absent. Results:
+**3D networks** - two real STAR*NET runs in `tests/fixtures/3d/` (see the README there: six comment and path lines were edited to remove a student number, an instrument serial and a course/crew line; no observation or result was touched). The suite compares our result with their `.lst`, `.pts` and `.snproj`:
 
 | | Pier monitoring (25 stations, 192 DM, 3 weighted control) | Control network (1 control point, fixed azimuth, `M`/`DN`/`DV`) |
 |---|---|---|
@@ -119,8 +119,8 @@ node tools/serve.js 8080         # then open http://localhost:8080/
 engine/   pure functions, no DOM: parser, matrix maths, statistics, levelling, 3D network,
           approximate coordinates, reports
 app/      the web page: index.html, style.css, app.js, manifest.json, icon.svg, samples/
-tests/    node:test suites (no packages); tests/fixtures holds the levelling job,
-          tests/fixtures/local (git-ignored) the 3D jobs
+tests/    node:test suites (no packages); tests/fixtures holds the real STAR*NET jobs
+          (1D levelling, and 3d/ with the two 3D runs)
 tools/    local dev server
 sw.js     service worker (repo root so its scope covers app/ and engine/)
 index.html  redirects to app/
