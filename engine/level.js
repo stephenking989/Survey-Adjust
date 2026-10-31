@@ -55,28 +55,28 @@
 //   chi-square test      T ~ chi2(r)  =>  accept if  chi2(a/2) <= T <= chi2(1-a/2),
 //                        reported as bounds on s0:  sqrt(chi2_bound / r)
 //
-// ERROR PROPAGATION - DOES STAR*NET SCALE BY THE ERROR FACTOR?
-// ------------------------------------------------------------
+// ERROR PROPAGATION - WHEN IS THE ERROR FACTOR APPLIED?
+// -----------------------------------------------------
 // The a-priori covariance of the unknowns is  Cx = sigma_0^2 Qxx  (sigma_0^2 = 1).
-// If the observation weights are too optimistic the a-posteriori covariance
-// is  s0^2 Qxx  - i.e. every std dev is multiplied by the error factor.
+// If the weights are too optimistic the a-posteriori covariance is  s0^2 Qxx,
+// i.e. every std dev is multiplied by the error factor s0.
 //
-// Checked against LEVEL_JOB.lst: yes, STAR*NET multiplies by the total error
-// factor in this run (6.336). Station N02, for example, has an unscaled std dev
-// of 0.0000352 m; times 6.336 gives 0.000223 m, the value in the .lst. The
-// fixed station is another tell: its listed std dev is 0.000001, which only
-// appears if 1e-7 (fixed_linear_std_err) is scaled up to 6.3e-7 and rounded.
+// STAR*NET (manual, "Station Error Ellipses"): if the adjustment passes the
+// chi-square test the adjusted std devs are used as they are; if it fails, they
+// are increased by the total error factor. Both real listings agree:
+//   - 1D levelling, error factor 6.336, test FAILED -> std devs scaled
+//     (station N02: 0.0000352 m unscaled x 6.336 = 0.000223 m as listed);
+//   - 3D pier job, error factor 0.968, test PASSED -> std devs NOT scaled
+//     (max difference to the listing 5e-7 m unscaled, 6e-5 m if scaled).
+// This is settings.errorScaling = 'auto' (the default); 'always' and 'never'
+// are available too (see propagationScale in stats.js).
 //
-// What this fixture cannot tell us is whether STAR*NET ALSO scales when the
-// chi-square test passes (factor < 1, or within bounds). We scale always by
-// default (settings.scaleByErrorFactor = true), which is the textbook
-// a-posteriori covariance. Set it false for pure a-priori propagation.
-//
-// A fixed station is eliminated exactly (no column) so it has no true
-// variance; for reporting we give it  fixedStdErr * scale  to match STAR*NET.
+// A fixed station is eliminated exactly (no column) so it has no true variance;
+// for reporting it gets  fixedStdErr * scale  (the 1e-7 m STAR*NET gives a fixed
+// value, scaled the same way, which is why the failed 1D run lists 0.000001).
 
 import { Matrix, cholesky, choleskySolve, inverseSPD, SingularMatrixError } from './matrix.js';
-import { chiSquareTest, normalQuantile } from './stats.js';
+import { chiSquareTest, normalQuantile, propagationScale } from './stats.js';
 import { LINEAR_UNITS, linearUnitsFromDat } from './project.js';
 
 export class AdjustmentError extends Error {
@@ -260,7 +260,7 @@ export function adjustLevelling(parsed, settings) {
   const alpha = settings.chiSquarePercent / 100;
   const test = dof > 0 ? chiSquareTest(T, dof, alpha) : null;
   const errorFactor = dof > 0 ? Math.sqrt(T / dof) : 1;
-  const scale = settings.scaleByErrorFactor && dof > 0 ? errorFactor : 1;
+  const scale = dof > 0 ? propagationScale(settings.errorScaling, test, errorFactor) : 1;
   const z = normalQuantile(0.5 + settings.confidencePercent / 200);
 
   // ---- 8. Results --------------------------------------------------------

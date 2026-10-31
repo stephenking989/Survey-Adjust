@@ -92,7 +92,7 @@ test('elevation std devs match the .lst (+/-0.000002 m): STAR*NET scales by the 
 });
 
 test('the same std devs WITHOUT scaling do not match (proves the scaling is real)', () => {
-  const unscaled = runAdjustment(dat, { ...settings, scaleByErrorFactor: false }).result;
+  const unscaled = runAdjustment(dat, { ...settings, errorScaling: 'never' }).result;
   const e = expectedStations.find((x) => x.name === 'N02');
   const s = unscaled.stations.find((x) => x.name === 'N02');
   assert.ok(Math.abs(s.stdDev - e.sd) > 1e-4, `unscaled ${s.stdDev} unexpectedly close to ${e.sd}`);

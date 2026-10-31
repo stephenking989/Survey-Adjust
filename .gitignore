@@ -3,3 +3,6 @@ node_modules/
 Thumbs.db
 *.log
 .claude/
+
+# Private/third-party job data used for local validation only (see README)
+tests/fixtures/local/

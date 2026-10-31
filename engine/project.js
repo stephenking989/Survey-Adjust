@@ -32,13 +32,25 @@ export function defaultSettings() {
     chiSquarePercent: 5,
     /** Std error STAR*NET assigns to a "fixed" value (project units). */
     fixedStdErr: 1e-7,
-    /** Multiply propagated std devs by the total error factor (see level.js). */
-    scaleByErrorFactor: true,
+    /** 'auto' (STAR*NET: scale std devs by the error factor only if chi-square fails), 'always' or 'never'. */
+    errorScaling: 'auto',
     /** |StdRes| above this is flagged. */
     stdResFlag: 3,
     /** Confidence level of the "68%" column, percent. */
     confidencePercent: 68,
     elevationDecimals: 5,
+    // ---- 2D/3D total-station settings (STAR*NET's defaults) ----
+    /** Default instrument. Angles in arc-seconds, lengths in project units. */
+    instrument: {
+      distanceConstant: 0.0091440183, distancePpm: 0, edmMethod: 'additive',
+      angle: 4, direction: 3, azimuth: 4, zenith: 10,
+      centeringInstrument: 0, centeringTarget: 0, centeringVertical: 0,
+    },
+    earthRadius: 6372000,
+    /** Coefficient of refraction; a .REF line in the data file overrides it. */
+    refraction: 0.07,
+    /** Std error of an angle/azimuth marked "!" (arc-seconds). */
+    fixedAngularStdErr: 1.0001e-3,
   };
 }
 
@@ -79,5 +91,17 @@ export function settingsFromSnproj(text, base = defaultSettings()) {
   if (adj.ell_percent_confidence !== undefined) s.confidencePercent = Number(adj.ell_percent_confidence);
   if ((raw.Listing || {}).number_elevation_decimals !== undefined) s.elevationDecimals = Number((raw.Listing).number_elevation_decimals);
   s.adjustmentType = adj.adjustment_type || null;
+  // 2D/3D instrument and geometry settings
+  const num = (v) => (v === undefined ? undefined : Number(v));
+  const ii = { ...s.instrument };
+  const take = (key, field) => { const v = num(ins[key]); if (v !== undefined) ii[field] = v; };
+  take('distance_std_err', 'distanceConstant'); take('edm_ppm', 'distancePpm');
+  take('angle_std_err', 'angle'); take('direction_std_err', 'direction'); take('azimuth_std_err', 'azimuth');
+  take('zenith_std_err', 'zenith'); take('instrument_centering_error', 'centeringInstrument');
+  take('target_centering_error', 'centeringTarget'); take('vertical_centering_error', 'centeringVertical');
+  s.instrument = ii;
+  if (adj.earth_radius_meters !== undefined) s.earthRadius = Number(adj.earth_radius_meters);
+  if (adj.index_of_refraction !== undefined) s.refraction = Number(adj.index_of_refraction);
+  if (adj.fixed_angular_std_err !== undefined) s.fixedAngularStdErr = Number(adj.fixed_angular_std_err);
   return s;
 }

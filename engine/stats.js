@@ -121,3 +121,19 @@ export function chiSquareTest(sumSqStdRes, dof, alpha) {
   else if (errorFactor < lowerBound) verdict = 'below-lower';
   return { alpha, dof, lowerChi2, upperChi2, lowerBound, upperBound, errorFactor, passed: verdict === 'passed', verdict };
 }
+
+/**
+ * Factor applied to propagated std devs (and error ellipses).
+ *
+ *   'auto'   STAR*NET's rule: use the a-priori std devs when the chi-square test
+ *            passes; multiply by the total error factor when it fails (manual,
+ *            "Station Error Ellipses": "if the adjustment fails the Chi Square test,
+ *            the standard deviations are increased by the computed Total Error Factor").
+ *   'always' always multiply (the textbook a-posteriori covariance)
+ *   'never'  pure a-priori propagation
+ */
+export function propagationScale(mode, test, errorFactor) {
+  if (!test || mode === 'never') return 1;
+  if (mode === 'always') return errorFactor;
+  return test.passed ? 1 : errorFactor;
+}

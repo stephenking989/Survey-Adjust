@@ -1,7 +1,7 @@
 {
   "name": "Survey-Adjust",
   "short_name": "Survey-Adjust",
-  "description": "Offline least squares adjustment for surveyors - 1D levelling",
+  "description": "Offline least squares adjustment for surveyors - levelling and 3D networks",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0f5c6e" />
-  <meta name="description" content="Offline least squares adjustment for surveyors - 1D levelling" />
+  <meta name="description" content="Offline least squares adjustment for surveyors - levelling and 3D total-station networks" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Survey-Adjust" />
@@ -18,7 +18,7 @@
   <header class="top">
     <div class="wrap">
       <h1>Survey-Adjust</h1>
-      <p class="sub">Least squares adjustment &middot; 1D levelling <span id="offlineBadge" class="badge" hidden>offline ready</span></p>
+      <p class="sub">Least squares adjustment &middot; levelling and 3D networks <span id="offlineBadge" class="badge" hidden>offline ready</span></p>
     </div>
   </header>
 
@@ -34,15 +34,32 @@
                   placeholder="E 100 1000.000 !&#10;L 100-A 0.512 120.5"></textarea>
         <button type="button" class="btn" id="usePaste">Use pasted text</button>
       </details>
-      <button type="button" class="btn link" id="sampleBtn">Try the sample job (LEVEL_JOB)</button>
+      <button type="button" class="btn link" id="sampleBtn">Try the levelling sample (LEVEL_JOB)</button>
+      <button type="button" class="btn link" id="sample3dBtn">Try the 3D sample (5-station network)</button>
     </section>
 
     <section class="card" aria-labelledby="h-set">
       <h2 id="h-set"><span class="step">2</span> Project settings</h2>
       <p class="muted">STAR*NET keeps these in the <code>.snproj</code>, not the <code>.dat</code>.</p>
-      <div class="field">
+      <p class="muted" id="kindInfo" hidden></p>
+      <div class="field" id="levelFields">
         <label for="levelStdErr">Differential level std error <span id="levelUnit">(m per km)</span></label>
         <input id="levelStdErr" type="number" inputmode="decimal" step="any" min="0" value="0.0005" />
+      </div>
+      <div id="tsFields" hidden>
+        <h3>Instrument <span id="insUnit" class="muted"></span></h3>
+        <div class="grid">
+          <div class="field"><label for="insDist">Distance constant</label><input id="insDist" type="number" inputmode="decimal" step="any" min="0" value="0.0091440183" /></div>
+          <div class="field"><label for="insPpm">Distance ppm</label><input id="insPpm" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+          <div class="field"><label for="insDir">Direction (")</label><input id="insDir" type="number" inputmode="decimal" step="any" min="0" value="3" /></div>
+          <div class="field"><label for="insZen">Zenith (")</label><input id="insZen" type="number" inputmode="decimal" step="any" min="0" value="10" /></div>
+          <div class="field"><label for="insAng">Angle (")</label><input id="insAng" type="number" inputmode="decimal" step="any" min="0" value="4" /></div>
+          <div class="field"><label for="insAz">Azimuth (")</label><input id="insAz" type="number" inputmode="decimal" step="any" min="0" value="4" /></div>
+          <div class="field"><label for="cenI">Centering: instrument</label><input id="cenI" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+          <div class="field"><label for="cenT">Centering: target</label><input id="cenT" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+          <div class="field"><label for="cenV">Centering: vertical</label><input id="cenV" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+          <div class="field"><label for="refr">Refraction coefficient</label><input id="refr" type="number" inputmode="decimal" step="any" value="0.07" /></div>
+        </div>
       </div>
       <div class="row">
         <div class="field">
@@ -56,7 +73,7 @@
       </div>
       <details>
         <summary>More</summary>
-        <label class="check"><input id="scaleFactor" type="checkbox" checked /> Scale std devs by the total error factor (as STAR*NET does)</label>
+        <label class="check"><input id="scaleFactor" type="checkbox" checked /> Scale std devs by the total error factor when the chi-square test fails (STAR*NET's rule)</label>
         <label class="btn file-btn small" for="snprojInput">Load settings from .snproj</label>
         <input id="snprojInput" type="file" class="visually-hidden" />
       </details>
@@ -80,6 +97,7 @@
           <select id="csvFormat" aria-label="CSV format">
             <option value="PE">CSV: Point, Elevation</option>
             <option value="PNEZD">CSV: PNEZD</option>
+            <option value="PNE">CSV: Point, N, E</option>
           </select>
           <button type="button" class="btn" id="dlCsv">Download CSV</button>
         </span>

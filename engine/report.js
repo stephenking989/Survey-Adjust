@@ -5,8 +5,8 @@
 // threshold) or null, so a UI can colour lines without re-parsing the text.
 // Pure function: pass `runDate` if you need a reproducible listing.
 
-export const ENGINE_NAME = 'Survey-Adjust';
-export const ENGINE_VERSION = '0.1.0';
+import { ENGINE_NAME, ENGINE_VERSION } from './version.js';
+export { ENGINE_NAME, ENGINE_VERSION };
 
 const WIDTH = 80;
 const LIST_DECIMALS = 4;   // the .lst prints elevations to 4 places
@@ -52,7 +52,7 @@ export function buildReport(result, opts = {}) {
   push(`      Project Units                       : ${u}`);
   push(`      Input/Output Coordinate Order       : ${order}`);
   push(`      Chi-Square Test Significance        : ${f(settings.chiSquarePercent, 2)}%`);
-  push(`      Std Devs Scaled by Error Factor     : ${settings.scaleByErrorFactor ? 'Yes' : 'No'}`);
+  push(`      Std Devs Scaled by Error Factor     : ${stats.errorFactorApplied !== 1 ? 'Yes (chi-square test failed)' : 'No'}`);
   push();
   push(center('Instrument Standard Error Settings'));
   push();
@@ -63,7 +63,7 @@ export function buildReport(result, opts = {}) {
   // ---- Warnings from the parser/engine ----------------------------------
   if (result.warnings.length) {
     heading('Warnings');
-    for (const w of result.warnings) push(`      Line ${w.line}: ${w.message}`, 'warn');
+    for (const w of result.warnings) push(`      ${w.line ? `Line ${w.line}: ` : ''}${w.message}`, 'warn');
     push();
   }
 
@@ -134,7 +134,7 @@ export function buildReport(result, opts = {}) {
 
   // ---- Adjusted elevations ----------------------------------------------
   heading(`Adjusted Elevations and Error Propagation (${u})`);
-  if (settings.scaleByErrorFactor && stats.dof > 0) {
+  if (stats.errorFactorApplied !== 1 && stats.dof > 0) {
     push(`Std deviations are scaled by the Total Error Factor (${f(stats.errorFactor, 3)}).`);
     push();
   }
