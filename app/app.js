@@ -43,6 +43,7 @@ let lastProblems = [];
 
 function showTab(name) {
   tab = name;
+  document.body.dataset.tab = name;
   for (const t of el.tabs) t.setAttribute('aria-current', t.dataset.tab === name ? 'page' : 'false');
   el.viewData.hidden = !(name === 'data' && !editing);
   el.viewEditor.hidden = !(name === 'data' && editing);

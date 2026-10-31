@@ -5,6 +5,7 @@
   --ink: #14232a;
   --muted: #5a6b73;
   --line: #d5dfe3;
+  --tab-off: #e6edf0;
   --accent: #0f5c6e;
   --accent-ink: #ffffff;
   --warn-bg: #fde4e1;
@@ -23,6 +24,7 @@
     --ink: #e6eef1;
     --muted: #9fb2ba;
     --line: #2a3b43;
+    --tab-off: #0a1115;
     --accent: #3fb1c9;
     --accent-ink: #06222a;
     --warn-bg: #4a1d19;
@@ -50,7 +52,7 @@ body {
 .top .sub { margin: 2px 0 0; font-size: .9rem; opacity: .9; }
 .badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; font-size: .75rem; background: rgba(255,255,255,.22); }
 
-main { padding-top: 14px; padding-bottom: 8px; }
+main { padding-top: 0; padding-bottom: 8px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px var(--gutter) 16px; margin-bottom: 14px; }
 .card h2 { margin: 0 0 10px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
 .step { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: .8rem; }
@@ -123,18 +125,24 @@ h3 { margin: 12px 0 0; font-size: .95rem; }
 @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* ---- Tabs -------------------------------------------------------------------- */
-/* Folder tabs: the active tab is outlined round its top and sides and takes the page colour, so the strip's
-   bottom line breaks under it and the tab flows into the page below. */
-.tabs { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); }
-.tabs-in { display: flex; gap: 4px; align-items: flex-end; padding-top: 8px; }
+/* Notebook tabs. The open tab has the card's colour and border and joins the card below it, so the two read as
+   one sheet; the other tabs are shorter and darker and sit behind it. The card's top corner under the first or
+   last tab is square so the border runs straight into the tab. */
+.tabs { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-top: 10px; }
+.tabs-in { display: flex; gap: 4px; align-items: flex-end; }
 .tab {
-  flex: 1; min-height: 44px; margin-bottom: -1px;            /* sits on the strip's bottom line */
-  border: 1px solid transparent; border-bottom-color: transparent; border-radius: 10px 10px 0 0;
-  background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer;
+  flex: 1; min-height: 38px; margin: 0; position: relative;
+  border: 1px solid var(--line); border-bottom: 0; border-radius: 10px 10px 0 0;
+  background: var(--tab-off); color: var(--muted); font: inherit; font-weight: 600; cursor: pointer;
 }
 .tab:hover { color: var(--ink); }
-.tab[aria-current=page] { background: var(--bg); color: var(--accent); border-color: var(--accent); border-bottom-color: var(--bg); }
+.tab[aria-current=page] {
+  z-index: 2; min-height: 46px; margin-bottom: -1px;          /* overlaps the card's top border */
+  background: var(--card); color: var(--accent); border-bottom: 1px solid var(--card); border-radius: 12px 12px 0 0;
+}
 .tab:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+body[data-tab=data] .view > .card:first-child { border-top-left-radius: 0; }
+body[data-tab=results] .view > .card:first-child { border-top-right-radius: 0; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-left: 4px; vertical-align: 2px; }
 .view[hidden], .page[hidden] { display: none; }
 .small { font-size: .82rem; }
