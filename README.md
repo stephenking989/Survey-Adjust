@@ -13,14 +13,17 @@ No build step, no frameworks, no runtime dependencies. Plain JavaScript ES modul
 | 0.1 | Engine core + 1D differential levelling, report, CSV, mobile UI, offline PWA |
 | 0.2 | 3D total-station networks: direction sets, slope distances, zenith angles, angles, azimuths, weighted/fixed control, starting coordinates computed from the observations |
 | 0.3 | Projects like STAR*NET's: several data files with include checkboxes and a reading order, an in-page editor for each file, Check data, a results page, and plain-language help when the chi-square test fails |
-| **0.4 (now)** | **Error ellipses and a network plot** (3D jobs): station and relative ellipses in the listing, matching STAR*NET's listings for both test jobs, and a pan-and-zoom plot with names, observation lines and ellipses |
-| Next | 2D networks, direction correlation from instrument centering |
+| 0.4 | Error ellipses and a network plot (3D jobs): station and relative ellipses in the listing, matching STAR*NET's listings for both test jobs, and a pan-and-zoom plot with names, observation lines and ellipses |
+| **0.5 (now)** | **2D networks**: horizontal angles, directions, distances and azimuths with no heights or zeniths, and traverse data (`TB` / `T` / `TE`). Same listing, ellipses and plot as 3D, without the elevation parts. **Not yet checked against a real STAR*NET 2D listing** (see below) |
+| Next | Direction correlation from instrument centering, 3D-format data in a 2D job, traverses that start from a bearing |
 | Later | Importers: Trimble JobXML, Carlson RW5, Leica GSI |
 | Later | Grid / NAD83(CSRS) support |
 
 ## Using it
 
 The app has three tabs, the same loop STAR*NET uses: edit the data, run, read the results.
+
+It works for levelling, 2D and 3D jobs. The job type is worked out from the data: a zenith angle or an elevation on a `C` record makes it 3D.
 
 1. **Data.** Add your `.dat` files (pick several at once, and a `.snproj` too if you have it: its options and file order are used), or start a new file, or try a sample. Each file has a checkbox (untick it to leave it out of the next run), up/down buttons (files are read in list order) and a remove button. Tap a name to **edit it in the page**: line numbers, bad lines marked in red as you type, undo/redo, find, and a row of keys for `- . ! * # '` that are awkward on a phone. Your text is saved on the device after every change.
 2. **Check data** lists every syntax error and warning with its file and line (tap one to jump there). **Adjust** runs the adjustment.
@@ -53,7 +56,10 @@ Add the app to your home screen (or install it from the browser menu) and it wor
 | `DB at` ... `DM to dir dist zen [HI/HT]` / `DN` / `DV` ... `DE` | direction sets (each set gets its own unknown orientation) |
 | `D`, `V`, `A`, `B`, `M` | distance, zenith, angle, azimuth/bearing (incl. quadrant bearings), angle+distance+zenith |
 | Stations without a `C` record | starting coordinates are worked out from the observations, like STAR*NET |
-| Anything else (`TB`, `G`, ...) | kept as "unsupported" with a warning |
+| `TB` backsight, `T` at angle distance, `TE` end [closing angle station] | traverses (2D format). Each `T` line becomes an `M` record (angle and distance from that station, previous point to next point), so a traverse adjusts exactly like the `M` lines it stands for. A backsight or closing angle given as a fixed bearing is refused for now |
+| `DM to direction distance` (no zenith) | the 2D form of a direction set; the 3D form adds the zenith |
+| A code written against a numeric station name (`C1 5000 5000`, `T2 90-00-00 100`) | read as `C 1 ...` and `T 2 ...`, as the manual's own examples are written |
+| Anything else (`G`, ...) | kept as "unsupported" with a warning |
 
 New record types are one function and one line in `RECORD_PARSERS` (`engine/parser.js`).
 
@@ -112,6 +118,8 @@ The last row corrects version 0.1, which scaled always. The levelling run (error
 | Station and relative error ellipses (25 + 18 rows / 9 + 15 rows) | axes and vertical within 0.000001 m, azimuth within 0.01 degree (68.27% confidence) | same, at 95% confidence; azimuths differ by at most a minute in the printed D-MM |
 
 Ellipse axes use the 2-D chi-square factor for the chosen confidence (2.448 at 95%, 1.515 at 68.27%); heights use the 1-D normal factor (1.960, 1.000). Which ellipses are listed follows the `.ELLIPSE` and `.RELATIVE` inline options in the manual (default: all stations; relative ellipses between stations joined by an observation). Both test jobs use `.REL` pair lists, so the "joined by an observation" default, `/OBS` and `/CON` are implemented from the manual but not checked against a listing. Angles and `M` records join the instrument station to both of their targets, which is my reading and also unchecked.
+
+**2D networks** - no real STAR*NET 2D listing was available, so the 2D adjustment is checked against things that can be proved instead: (1) a three-distance trilateration against an independent hand-written Gauss-Newton solution (agrees to 1e-9); (2) noise-free angles and distances recover the true coordinates; (3) a traverse gives the same result as the `M` lines it stands for; (4) the two-loop sample from the STAR*NET manual (appendix A, example 1) gives the same coordinates, sum of squares and ellipses as the 3D engine run with every height fixed at zero. The std error model for horizontal distances, angles and directions is the manual's (appendix C.4), and for these cases it is the same formula as the slope-distance one at a zenith of 90 degrees. The manual prints that example's input data but not its listing, so the sample's "suggested options" are mine, chosen so the test passes. If you can supply a real 2D job (`.dat`, `.lst`, `.snproj`), it can be added to the validation.
 
 **Known differences** (not hidden by loosened tolerances):
 

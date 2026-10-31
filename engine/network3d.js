@@ -148,6 +148,10 @@ function setList0(obs) {
 }
 
 export function adjustNetwork3D(parsed, settings) {
+  // A 2D adjustment is the same machinery with every height held at zero and no zenith angles: a
+  // horizontal distance is then a slope distance at zenith 90 degrees, and the centering formulas for
+  // slope distances reduce exactly to the horizontal ones in the STAR*NET manual (appendix C.4).
+  const twoD = settings.dimension === 2;
   const warnings = parsed.warnings.map((w) => ({ ...w }));
   const ins = { ...settings.instrument, edmMethod: parsed.state.edm || settings.instrument.edmMethod };
   const R = settings.earthRadius;
@@ -157,24 +161,24 @@ export function adjustNetwork3D(parsed, settings) {
   const stations = new Map();
   for (const r of parsed.records) {
     if (r.type !== 'C') continue;
-    if (r.elevation === undefined) {
+    if (r.elevation === undefined && !twoD) {
       throw new AdjustmentError(`Line ${r.line}: C record for ${r.name} has no elevation (add .3D to the data file)`, { file: r.file, line: r.line });
     }
     if (stations.has(r.name)) warnings.push({ file: r.file, line: r.line, message: `Station ${r.name} entered again; the later value is used` });
     stations.set(r.name, {
-      name: r.name, n: r.north, e: r.east, z: r.elevation,
-      status: [r.status.north, r.status.east, r.status.elevation],
-      stdErr: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation],
+      name: r.name, n: r.north, e: r.east, z: twoD ? 0 : r.elevation,
+      status: [r.status.north, r.status.east, twoD ? 'fixed' : r.status.elevation],
+      stdErr: [r.stdErr.north, r.stdErr.east, twoD ? null : r.stdErr.elevation],
       description: r.description, line: r.line, file: r.file, used: false,
-      input: { n: r.north, e: r.east, z: r.elevation, sd: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation] },
+      input: { n: r.north, e: r.east, z: twoD ? 0 : r.elevation, sd: [r.stdErr.north, r.stdErr.east, twoD ? null : r.stdErr.elevation] },
     });
   }
   // Stations with no C record get starting coordinates from the observations.
   try {
     const added = approximateStations(parsed, stations, (name, n, e, z) => ({
-      name, n, e, z, status: ['free', 'free', 'free'], stdErr: [null, null, null], description: '', line: 0, used: false,
+      name, n, e, z: twoD ? 0 : z, status: ['free', 'free', twoD ? 'fixed' : 'free'], stdErr: [null, null, null], description: '', line: 0, used: false,
       input: { n, e, z, sd: [null, null, null] }, approximate: true,
-    }));
+    }), { twoD });
     for (const name of added) warnings.push({ line: null, note: true, message: `Station ${name} has no C record; starting coordinates were computed from the observations` });
   } catch (err) {
     throw new AdjustmentError(err.message);
@@ -200,11 +204,15 @@ export function adjustNetwork3D(parsed, settings) {
     obs.push({ kind: 'dist', rec: r, A, B, hi: r.hi || 0, ht: r.ht || 0, value: distance, errGiven, line: r.line, file: r.file });
   };
   const pushZen = (r, from, to, zenithDeg, errGiven) => {
+    if (twoD) return;
     const A = sta(from, r); const B = sta(to, r);
     obs.push({ kind: 'zen', rec: r, A, B, hi: r.hi || 0, ht: r.ht || 0, value: zenithDeg * DEG, errGiven, line: r.line, file: r.file });
   };
 
   for (const r of parsed.records) {
+    if (twoD && (r.type === 'V' || r.type === 'DV' || (r.zenith !== undefined && r.zenith !== null))) {
+      throw new AdjustmentError(`Line ${r.line}: zenith angles (3D data) in a 2D adjustment are not supported yet. Remove the zeniths, or add elevations and run a 3D adjustment`, { file: r.file, line: r.line });
+    }
     switch (r.type) {
       case 'DM': case 'DN': {
         const set = addSet(r); set.count++;
@@ -459,7 +467,7 @@ export function adjustNetwork3D(parsed, settings) {
   });
 
   return {
-    type: '3D',
+    type: twoD ? '2D' : '3D',
     units: settings.unitsInfo,
     stations: outStations,
     sets: setList.map((st) => ({ id: st.id, at: st.at, orientation: ((st.omega / DEG) % 360 + 360) % 360, count: st.count })),

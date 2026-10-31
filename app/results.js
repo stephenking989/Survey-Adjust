@@ -48,8 +48,8 @@ export function renderResults(out, openLine) {
   renderResiduals();
   renderPoints();
   renderMessages();
-  $('plotTab').hidden = out.kind !== '3d';
-  if (out.kind === '3d') setPlotData(out);
+  $('plotTab').hidden = out.kind === 'level';
+  if (out.kind !== 'level') setPlotData(out);
   showPage('summary');
 }
 
@@ -71,7 +71,7 @@ function renderSummary() {
     ['Redundancy', stats.dof], ['Sum sq. StdRes', fmt(stats.sumSqStdRes, 3)], ['Error factor', stats.dof > 0 ? fmt(stats.errorFactor, 3) : 'n/a'],
     ['Bounds', ct ? `${fmt(ct.lowerBound, 3)} / ${fmt(ct.upperBound, 3)}` : 'n/a'], ['|StdRes| flagged', stats.nFlagged],
   ];
-  if (out.kind === '3d') cells.push(['Iterations', out.result.iterations]);
+  if (out.kind !== 'level') cells.push(['Iterations', out.result.iterations]);
   el.summary.replaceChildren(...cells.map(([k, v]) => make('div', {}, make('dt', { textContent: k }), make('dd', { textContent: v }))));
 
   el.advice.replaceChildren(...adviseOnAdjustment(out).map((n) => make('p', { className: n.level === 'warn' ? 'warn' : '', textContent: n.text })));
@@ -163,12 +163,13 @@ function renderPoints() {
     return;
   }
   const en = out.parsed.state.order === 'EN';
+  const two = out.kind === '2d';
   const head = en ? ['E', 'N'] : ['N', 'E'];
   t.replaceChildren(
-    make('tr', {}, ...['Station', ...head, 'Z', `σ ${head[0]}`, `σ ${head[1]}`, 'σ Z'].map((h, i) => make('th', { textContent: h, className: i === 0 ? 'l' : '' }))),
+    make('tr', {}, ...['Station', ...head, ...(two ? [] : ['Z']), `σ ${head[0]}`, `σ ${head[1]}`, ...(two ? [] : ['σ Z'])].map((h, i) => make('th', { textContent: h, className: i === 0 ? 'l' : '' }))),
     ...r.stations.map((s) => {
-      const c = en ? [s.e, s.n, s.z] : [s.n, s.e, s.z];
-      const sd = en ? [s.stdDev[1], s.stdDev[0], s.stdDev[2]] : s.stdDev;
+      const c = (en ? [s.e, s.n, s.z] : [s.n, s.e, s.z]).slice(0, two ? 2 : 3);
+      const sd = (en ? [s.stdDev[1], s.stdDev[0], s.stdDev[2]] : s.stdDev).slice(0, two ? 2 : 3);
       return make('tr', {}, make('td', { textContent: s.name }), ...c.map((v) => make('td', { textContent: fmt(v, 4) })), ...sd.map((v) => make('td', { textContent: fmt(v, 4) })));
     }),
   );

@@ -44,9 +44,9 @@ test('C record 2D: single flag applies to all, per-coordinate weights', () => {
 });
 
 test('record types that are not supported yet are kept with a warning', () => {
-  const p = parseDat('TB A\nE A 100 !\n');
+  const p = parseDat('QQ A\nE A 100 !\n');
   assert.equal(p.records[0].type, 'unsupported');
-  assert.equal(p.records[0].code, 'TB');
+  assert.equal(p.records[0].code, 'QQ');
   assert.equal(p.warnings.length, 1);
   assert.equal(p.warnings[0].line, 1);
 });

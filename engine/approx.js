@@ -29,7 +29,7 @@ function azimuth(A, B) { return Math.atan2(B.e - A.e, B.n - A.n); }
  * @param {Function} make    (name, n, e, z) -> station object to store
  * @returns {string[]} names of the stations that were added
  */
-export function approximateStations(parsed, stations, make) {
+export function approximateStations(parsed, stations, make, opts = {}) {
   // Everything the observations refer to.
   const referenced = new Set();
   const sets = new Map();
@@ -54,7 +54,11 @@ export function approximateStations(parsed, stations, make) {
 
   // Reduce a pointing from A (heights hi/ht) to a position for T.
   const locate = (A, r, az) => {
-    if (!(r.distance > 0) || r.zenith === undefined || r.zenith === null) return null;
+    if (!(r.distance > 0)) return null;
+    // A 2D job has no zenith angles: its distances are horizontal.
+    if (r.zenith === undefined || r.zenith === null) {
+      return opts.twoD ? { n: A.n + r.distance * Math.cos(az), e: A.e + r.distance * Math.sin(az), z: A.z } : null;
+    }
     const z = r.zenith * DEG;
     const Dh = r.distance * Math.sin(z);
     return { n: A.n + Dh * Math.cos(az), e: A.e + Dh * Math.sin(az), z: A.z + (r.hi || 0) - (r.ht || 0) + r.distance * Math.cos(z) };

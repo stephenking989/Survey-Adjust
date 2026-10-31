@@ -34,7 +34,7 @@ export function initPlot() {
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => { if (data && el.svg.clientWidth) schedule(); }).observe(el.svg);
 }
 
-/** out = the 3D result of runAdjustment. */
+/** out = the 2D or 3D result of runAdjustment. */
 export function setPlotData(out) {
   const { result, ellipses, parsed } = out;
   const byName = new Map(result.stations.map((s) => [s.name, s]));
@@ -44,7 +44,7 @@ export function setPlotData(out) {
   const biggest = Math.max(1e-9, ...ellipses.stations.map((e) => e.semiMajor));
   data = {
     stations: result.stations, byName, lines, ellipses: new Map(ellipses.stations.map((e) => [e.name, e])), relative: ellipses.relative,
-    extent, baseExag: (0.06 * extent) / biggest, conf: ellipses.confidence, unit: result.units.short,
+    two: result.type === '2D', extent, baseExag: (0.06 * extent) / biggest, conf: ellipses.confidence, unit: result.units.short,
     bounds: { e0: Math.min(...es), e1: Math.max(...es), n0: Math.min(...ns), n1: Math.max(...ns) },
   };
   el.size.value = '0';
@@ -127,7 +127,7 @@ function draw() {
   for (const s of data.stations) {
     const [x, y] = toScreen(s.e, s.n);
     if (x < -40 || y < -40 || x > w + 40 || y > h + 40) continue;
-    const held = s.status.some((v) => v === 'fixed');
+    const held = s.status.slice(0, data.two ? 2 : 3).some((v) => v === 'fixed');
     if (held) g.append(node('path', { d: `M${x} ${y - 6.5} L${x + 6} ${y + 4.5} L${x - 6} ${y + 4.5} Z`, fill: 'var(--ink)', stroke: 'var(--card)', 'stroke-width': 1 }));
     else g.append(node('circle', { cx: x, cy: y, r: 4, fill: 'var(--card)', stroke: 'var(--ink)', 'stroke-width': 1.6 }));
     if (el.names.checked) g.append(node('text', { x: x + 8, y: y - 7, 'font-size': 11, fill: 'var(--ink)', stroke: 'var(--card)', 'stroke-width': 3, 'paint-order': 'stroke', 'font-family': 'system-ui, sans-serif' }, s.name));
@@ -194,6 +194,8 @@ function tap(px, py) {
   if (!best) { el.info.textContent = 'Tap a station for details.'; return; }
   const e = data.ellipses.get(best.name);
   const f = (v) => v.toFixed(4);
-  el.info.textContent = `${best.name}: N ${f(best.n)}  E ${f(best.e)}  Z ${f(best.z)}. Std dev N ${f(best.stdDev[0])}, E ${f(best.stdDev[1])}, Z ${f(best.stdDev[2])}.`
+  el.info.textContent = data.two
+    ? `${best.name}: N ${f(best.n)}  E ${f(best.e)}. Std dev N ${f(best.stdDev[0])}, E ${f(best.stdDev[1])}.`
+    : `${best.name}: N ${f(best.n)}  E ${f(best.e)}  Z ${f(best.z)}. Std dev N ${f(best.stdDev[0])}, E ${f(best.stdDev[1])}, Z ${f(best.stdDev[2])}.`
     + (e ? ` Ellipse ${f(e.semiMajor)} x ${f(e.semiMinor)} at azimuth ${e.azimuth.toFixed(1)}°.` : '');
 }

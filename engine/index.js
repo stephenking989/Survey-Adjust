@@ -31,13 +31,21 @@ export const RHO_ARCSEC = RHO;
 
 const TOTAL_STATION = new Set(['DM', 'DN', 'DV', 'D', 'V', 'A', 'B', 'M']);
 
-/** 'level' when the file has L records, '3d' when it has total-station records. */
+/**
+ * 'level' when the files have L records; otherwise the total-station records decide between '2d' and '3d':
+ * the job is 3D when any control point has an elevation or any observation is in 3D format (a zenith, or
+ * written after .3D), and 2D when everything is horizontal.
+ */
 export function detectKind(parsed) {
   const level = parsed.records.some((r) => r.type === 'L');
   const ts = parsed.records.some((r) => TOTAL_STATION.has(r.type));
   if (level && ts) throw new AdjustmentError('This file mixes differential levels (L) with total-station observations; adjust them in separate files for now');
   if (level) return 'level';
-  if (ts) return '3d';
+  if (ts) {
+    const is3d = parsed.records.some((r) => (r.type === 'C' && r.elevation !== undefined)
+      || (TOTAL_STATION.has(r.type) && (r.dim === 3 || (r.zenith !== undefined && r.zenith !== null) || r.type === 'V' || r.type === 'DV')));
+    return is3d ? '3d' : '2d';
+  }
   throw new AdjustmentError('The data file has no observations this version can adjust (L, DM, DN, DV, D, V, A, B or M records)');
 }
 
@@ -75,6 +83,7 @@ export function runAdjustment(input, settings = defaultSettings(), opts = {}) {
       return { kind, parsed, result, report, csv: (format, o) => exportCsv(result, { format, ...o }) };
     }
     s.unitsInfo = LINEAR_UNITS[s.linearUnits];
+    s.dimension = kind === '2d' ? 2 : 3;
     const result = adjustNetwork3D(parsed, s);
     const ellipses = ellipseTables({ parsed, result });
     const report = buildReport3D(result, { ...common, ellipses });

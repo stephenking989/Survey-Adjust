@@ -14,7 +14,7 @@ const el = {
   tabs: [...document.querySelectorAll('.tab')], resultsDot: $('resultsDot'),
   viewData: $('view-data'), viewEditor: $('view-editor'), viewOptions: $('view-options'), viewResults: $('view-results'),
   projectName: $('projectName'), fileList: $('fileList'), fileEmpty: $('fileEmpty'), addInput: $('addInput'), newFileBtn: $('newFileBtn'),
-  sampleBtn: $('sampleBtn'), sample3dBtn: $('sample3dBtn'), addNote: $('addNote'),
+  sampleBtn: $('sampleBtn'), sample2dBtn: $('sample2dBtn'), sample3dBtn: $('sample3dBtn'), addNote: $('addNote'),
   kindInfo: $('kindInfo'), checkBtn: $('checkBtn'), adjustBtn: $('adjustBtn'), problems: $('problems'),
   edCheck: $('edCheck'), edAdjust: $('edAdjust'), edProblems: $('edProblems'),
   snprojInput: $('snprojInput'), optInfo: $('optInfo'), resetOpts: $('resetOpts'), optError: $('optError'),
@@ -34,7 +34,7 @@ const make = (tag, props = {}, ...kids) => { const n = Object.assign(document.cr
 
 let tab = 'data';
 let editing = false;
-let kind = null;                 // 'level' | '3d' | null, from the ticked files
+let kind = null;                 // 'level' | '2d' | '3d' | null, from the ticked files
 let lastOut = null;              // the last successful adjustment
 let lastRun = { rev: -1, sig: '' };
 let lastProblems = [];
@@ -162,6 +162,9 @@ async function loadSample(url, name, settings) {
   }
 }
 el.sampleBtn.addEventListener('click', () => loadSample('../tests/fixtures/LEVEL_JOB.dat', 'LEVEL_JOB.dat', { levelStdErr: 0.0002 }));
+el.sample2dBtn.addEventListener('click', () => loadSample('./samples/2D_TRAVERSE.dat', '2D_TRAVERSE.dat', {
+  instrument: { distanceConstant: 0.02, distancePpm: 0, direction: 5, angle: 5, azimuth: 5, centeringInstrument: 0, centeringTarget: 0 },
+}));
 el.sample3dBtn.addEventListener('click', () => loadSample('./samples/3D_SAMPLE.dat', '3D_SAMPLE.dat', {
   refraction: 0.07,
   instrument: { distanceConstant: 0.0007, distancePpm: 2, direction: 3, zenith: 3, angle: 4, azimuth: 4, centeringInstrument: 0, centeringTarget: 0, centeringVertical: 0 },
@@ -247,12 +250,14 @@ for (const input of document.querySelectorAll('#view-options input')) {
 /** Show the options that apply to this kind of job, and the matching CSV choices. */
 function applyKind(k, unitKey) {
   const u = LINEAR_UNITS[unitKey] || LINEAR_UNITS.meters;
-  el.levelFields.hidden = k === '3d';
-  el.tsFields.hidden = k !== '3d';
+  el.levelFields.hidden = k === '3d' || k === '2d';
+  el.tsFields.hidden = k !== '3d' && k !== '2d';
+  for (const f of document.querySelectorAll('[data-3d]')) f.hidden = k === '2d';
   el.levelUnit.textContent = `(${u.short} per ${u.perShort})`;
   el.insUnit.textContent = `(lengths in ${u.short})`;
-  for (const o of el.csvFormat.options) o.disabled = k === 'level' && o.value === 'PNE';
-  if (el.csvFormat.selectedOptions[0] && el.csvFormat.selectedOptions[0].disabled) el.csvFormat.value = 'PE';
+  // Levelling has no northing/easting; a 2D job has no elevation.
+  for (const o of el.csvFormat.options) o.disabled = (k === 'level' && o.value === 'PNE') || (k === '2d' && o.value !== 'PNE');
+  if (el.csvFormat.selectedOptions[0] && el.csvFormat.selectedOptions[0].disabled) el.csvFormat.value = k === '2d' ? 'PNE' : 'PE';
 }
 
 // ---- What kind of job is in the ticked files ---------------------------------------------------------
@@ -280,6 +285,10 @@ function updateKind() {
     if (kind === 'level') {
       const n = p.records.filter((r) => r.type === 'L').length;
       el.kindInfo.textContent = `Differential levelling (1D): ${n} level runs, ${control} control points, ${p.files.length} file${p.files.length > 1 ? 's' : ''}, units ${u.label}.${bad}`;
+    } else if (kind === '2d') {
+      const sets = new Set(p.records.filter((r) => r.set).map((r) => r.set)).size;
+      const n = p.records.filter((r) => ['DM', 'DN', 'D', 'A', 'B', 'M'].includes(r.type)).length;
+      el.kindInfo.textContent = `Horizontal network (2D): ${n} observation records${sets ? ` in ${sets} direction sets` : ''}, ${control} stations entered, ${p.files.length} file${p.files.length > 1 ? 's' : ''}, units ${u.label}. Check the instrument on the Options tab.${bad}`;
     } else {
       const sets = new Set(p.records.filter((r) => r.set).map((r) => r.set)).size;
       const n = p.records.filter((r) => ['DM', 'DN', 'DV', 'D', 'V', 'A', 'B', 'M'].includes(r.type)).length;
@@ -328,6 +337,9 @@ function validateOptions(s) {
   if (kind === 'level' && !(s.levelStdErr > 0)) return 'Enter a level std error greater than zero on the Options tab.';
   if (!(s.chiSquarePercent > 0 && s.chiSquarePercent < 100)) return 'Chi-square level must be between 0 and 100 % (Options tab).';
   if (!(s.confidencePercent > 0 && s.confidencePercent < 100)) return 'The error ellipse confidence region must be between 0 and 100 % (Options tab).';
+  if (kind === '2d' && !(s.instrument.distanceConstant >= 0 && s.instrument.direction > 0 && s.instrument.angle > 0)) {
+    return 'Enter the instrument std errors on the Options tab (direction and angle must be greater than zero).';
+  }
   if (kind === '3d' && !(s.instrument.distanceConstant >= 0 && s.instrument.direction > 0 && s.instrument.zenith > 0)) {
     return 'Enter the instrument std errors on the Options tab (direction and zenith must be greater than zero).';
   }
