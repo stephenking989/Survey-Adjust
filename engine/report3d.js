@@ -230,6 +230,29 @@ export function buildReport3D(result, opts = {}) {
   push(`Station                     ${coordHead[0]}             ${coordHead[1]}            Elev`);
   for (const s of result.stations) { const d = pickSd(s); push(`${padR(s.name, 16)}${padL(f(d[0], 6), 14)}${padL(f(d[1], 6), 14)}${padL(f(d[2], 6), 14)}`); }
   push();
+  if (opts.ellipses) {
+    const { confidence, stations, relative } = opts.ellipses;
+    const conf = `${Number(confidence.toFixed(2))}%`;
+    const az = (deg) => {
+      let d = Math.floor(deg); let m = Math.round((deg - d) * 60);
+      if (m === 60) { d += 1; m = 0; }
+      return `${d % 180}-${String(m).padStart(2, '0')}`;
+    };
+    push(center(`Station Coordinate Error Ellipses (${u})`));
+    push(center(`Confidence Region = ${conf}`)); push();
+    push('Station                 Semi-Major    Semi-Minor   Azimuth of       Elev');
+    push('                            Axis          Axis     Major Axis');
+    for (const e of stations) push(`${padR(e.name, 16)}${padL(f(e.semiMajor, 6), 18)}${padL(f(e.semiMinor, 6), 14)}${padL(az(e.azimuth), 11)}${padL(f(e.vertical, 6), 13)}`);
+    push();
+    if (relative.length) {
+      push(center(`Relative Error Ellipses (${u})`));
+      push(center(`Confidence Region = ${conf}`)); push();
+      push('Stations                Semi-Major    Semi-Minor   Azimuth of     Vertical');
+      push('From       To               Axis          Axis     Major Axis');
+      for (const e of relative) push(`${padR(e.from, 11)}${padR(e.to, 11)}${padL(f(e.semiMajor, 6), 12)}${padL(f(e.semiMinor, 6), 14)}${padL(az(e.azimuth), 11)}${padL(f(e.vertical, 6), 13)}`);
+      push();
+    }
+  }
   push(center(`${ENGINE_NAME} ${ENGINE_VERSION}`));
   return { text: lines.map((l) => l.text).join('\n') + '\n', lines };
 }

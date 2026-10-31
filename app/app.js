@@ -20,7 +20,7 @@ const el = {
   snprojInput: $('snprojInput'), optInfo: $('optInfo'), resetOpts: $('resetOpts'), optError: $('optError'),
   levelFields: $('levelFields'), tsFields: $('tsFields'), insUnit: $('insUnit'),
   levelStdErr: $('levelStdErr'), levelUnit: $('levelUnit'), chiPercent: $('chiPercent'),
-  stdResFlag: $('stdResFlag'), scaleFactor: $('scaleFactor'),
+  stdResFlag: $('stdResFlag'), confPercent: $('confPercent'), scaleFactor: $('scaleFactor'),
   insDist: $('insDist'), insPpm: $('insPpm'), insDir: $('insDir'), insZen: $('insZen'), insAng: $('insAng'), insAz: $('insAz'),
   cenI: $('cenI'), cenT: $('cenT'), cenV: $('cenV'), refr: $('refr'),
   noResults: $('noResults'), resBody: $('resBody'), stale: $('stale'), rerun: $('rerun'),
@@ -187,6 +187,7 @@ function putSettings(s) {
   if (Number.isFinite(s.levelStdErr)) el.levelStdErr.value = Number(s.levelStdErr.toPrecision(10));
   if (Number.isFinite(s.chiSquarePercent)) el.chiPercent.value = s.chiSquarePercent;
   if (Number.isFinite(s.stdResFlag)) el.stdResFlag.value = s.stdResFlag;
+  if (Number.isFinite(s.confidencePercent)) el.confPercent.value = s.confidencePercent;
   if (typeof s.errorScaling === 'string') el.scaleFactor.checked = s.errorScaling !== 'never';
   if (Number.isFinite(s.refraction)) el.refr.value = s.refraction;
   if (s.instrument) {
@@ -211,6 +212,7 @@ function readSettings() {
   s.levelStdErr = Number(el.levelStdErr.value);
   s.chiSquarePercent = Number(el.chiPercent.value);
   s.stdResFlag = Number(el.stdResFlag.value);
+  s.confidencePercent = Number(el.confPercent.value);
   s.errorScaling = el.scaleFactor.checked ? 'auto' : 'never';
   s.refraction = Number(el.refr.value);
   s.instrument = { ...s.instrument };
@@ -325,6 +327,7 @@ function clearProblems() {
 function validateOptions(s) {
   if (kind === 'level' && !(s.levelStdErr > 0)) return 'Enter a level std error greater than zero on the Options tab.';
   if (!(s.chiSquarePercent > 0 && s.chiSquarePercent < 100)) return 'Chi-square level must be between 0 and 100 % (Options tab).';
+  if (!(s.confidencePercent > 0 && s.confidencePercent < 100)) return 'The error ellipse confidence region must be between 0 and 100 % (Options tab).';
   if (kind === '3d' && !(s.instrument.distanceConstant >= 0 && s.instrument.direction > 0 && s.instrument.zenith > 0)) {
     return 'Enter the instrument std errors on the Options tab (direction and zenith must be greater than zero).';
   }

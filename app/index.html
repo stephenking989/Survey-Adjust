@@ -142,6 +142,10 @@
             <input id="stdResFlag" type="number" inputmode="decimal" step="any" min="0" value="3" />
           </div>
         </div>
+        <div class="field">
+          <label for="confPercent">Error ellipse confidence region (%)</label>
+          <input id="confPercent" type="number" inputmode="decimal" step="any" min="1" max="99.9" value="95" />
+        </div>
         <label class="check"><input id="scaleFactor" type="checkbox" checked /> Scale std devs by the total error factor when the chi-square test fails (STAR*NET's rule)</label>
         <button type="button" class="btn small" id="resetOpts">Reset options to defaults</button>
         <div id="optError" class="alert error" role="alert" hidden></div>
@@ -158,6 +162,7 @@
           <div class="seg" role="tablist" aria-label="Result pages">
             <button type="button" class="seg-btn" data-page="summary" aria-current="true">Summary</button>
             <button type="button" class="seg-btn" data-page="listing">Listing</button>
+            <button type="button" class="seg-btn" data-page="plot" id="plotTab" hidden>Plot</button>
             <button type="button" class="seg-btn" data-page="residuals">Residuals</button>
             <button type="button" class="seg-btn" data-page="points">Points</button>
             <button type="button" class="seg-btn" data-page="messages">Messages <span id="msgCount" class="count"></span></button>
@@ -174,6 +179,27 @@
             <div class="field"><label for="jump">Jump to section</label><select id="jump"></select></div>
             <div class="legend"><span class="key warn"></span> failed test / warning <span class="key flag"></span> |StdRes| over limit</div>
             <pre id="report" class="report" tabindex="0" aria-label="Adjustment listing"></pre>
+          </div>
+
+          <div id="page-plot" class="page" hidden>
+            <div class="plot-tools">
+              <label class="check"><input id="plotNames" type="checkbox" checked /> Names</label>
+              <label class="check"><input id="plotEllipses" type="checkbox" checked /> Ellipses</label>
+              <label class="check"><input id="plotRelative" type="checkbox" /> Relative</label>
+              <label class="check"><input id="plotLines" type="checkbox" checked /> Lines</label>
+            </div>
+            <div class="plot-box">
+              <svg id="plotSvg" class="plot" role="img" aria-label="Network plot with error ellipses"></svg>
+              <div class="plot-btns">
+                <button type="button" class="icon-btn" id="plotZoomIn" aria-label="Zoom in">+</button>
+                <button type="button" class="icon-btn" id="plotZoomOut" aria-label="Zoom out">&minus;</button>
+                <button type="button" class="icon-btn" id="plotFit" aria-label="Fit to screen">&#x2922;</button>
+              </div>
+            </div>
+            <div class="field"><label for="plotSize">Ellipse size</label><input id="plotSize" type="range" min="-2" max="2" step="0.05" value="0" /></div>
+            <p class="muted small" id="plotNote"></p>
+            <p class="muted" id="plotInfo" aria-live="polite">Tap a station for details.</p>
+            <p class="muted small">Triangles are stations held fixed in at least one coordinate. Drag to pan; pinch or use the buttons to zoom.</p>
           </div>
 
           <div id="page-residuals" class="page" hidden>

@@ -199,3 +199,13 @@ table.data tr.flag td { background: var(--flag-bg); color: var(--flag-ink); }
 @media (min-width: 761px) { .tabs { position: static; } }
 
 [hidden] { display: none !important; }
+
+/* ---- Network plot ----------------------------------------------------------------------------- */
+.plot-tools { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.plot-tools .check { margin: 4px 0; }
+.plot-box { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); overflow: hidden; }
+.plot { display: block; width: 100%; height: min(62vh, 520px); min-height: 280px; touch-action: none; cursor: grab; user-select: none; }
+.plot:active { cursor: grabbing; }
+.plot-btns { position: absolute; left: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.plot-btns .icon-btn { width: 40px; min-height: 40px; font-size: 1.2rem; background: var(--card); }
+input[type=range] { width: 100%; min-height: 32px; }

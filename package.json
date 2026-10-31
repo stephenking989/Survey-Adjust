@@ -1,6 +1,6 @@
 {
   "name": "survey-adjust",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Browser-based, offline-capable least squares adjustment for surveyors (STAR*NET-style)",
   "type": "module",
   "private": true,

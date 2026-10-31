@@ -12,8 +12,9 @@ No build step, no frameworks, no runtime dependencies. Plain JavaScript ES modul
 |---|---|
 | 0.1 | Engine core + 1D differential levelling, report, CSV, mobile UI, offline PWA |
 | 0.2 | 3D total-station networks: direction sets, slope distances, zenith angles, angles, azimuths, weighted/fixed control, starting coordinates computed from the observations |
-| **0.3 (now)** | **Projects like STAR*NET's**: several data files with include checkboxes and a reading order, an in-page editor for each file, Check data, a results page, and plain-language help when the chi-square test fails |
-| Next | 2D networks, error ellipses, direction correlation from instrument centering |
+| 0.3 | Projects like STAR*NET's: several data files with include checkboxes and a reading order, an in-page editor for each file, Check data, a results page, and plain-language help when the chi-square test fails |
+| **0.4 (now)** | **Error ellipses and a network plot** (3D jobs): station and relative ellipses in the listing, matching STAR*NET's listings for both test jobs, and a pan-and-zoom plot with names, observation lines and ellipses |
+| Next | 2D networks, direction correlation from instrument centering |
 | Later | Importers: Trimble JobXML, Carlson RW5, Leica GSI |
 | Later | Grid / NAD83(CSRS) support |
 
@@ -24,7 +25,7 @@ The app has three tabs, the same loop STAR*NET uses: edit the data, run, read th
 1. **Data.** Add your `.dat` files (pick several at once, and a `.snproj` too if you have it: its options and file order are used), or start a new file, or try a sample. Each file has a checkbox (untick it to leave it out of the next run), up/down buttons (files are read in list order) and a remove button. Tap a name to **edit it in the page**: line numbers, bad lines marked in red as you type, undo/redo, find, and a row of keys for `- . ! * # '` that are awkward on a phone. Your text is saved on the device after every change.
 2. **Check data** lists every syntax error and warning with its file and line (tap one to jump there). **Adjust** runs the adjustment.
 3. **Options.** STAR*NET keeps these in the `.snproj`, not the `.dat`, so enter them or load the `.snproj`: levelling needs the differential level std error per km; 3D needs the instrument (distance constant and ppm, direction, zenith, angle and azimuth std errors, centering errors) and the refraction coefficient.
-4. **Results.** *Summary* (chi-square verdict, numbers, error factor by type of observation, and advice), *Listing* (the full STAR*NET-style report with a jump-to-section list), *Residuals* (worst first; tap a row to open that line in the editor), *Points* (adjusted coordinates), *Messages*. Download the listing (`.lst`) or the coordinates as CSV (`Point,Elevation`, `PNEZD`, or `Point,N,E`).
+4. **Results.** *Summary* (chi-square verdict, numbers, error factor by type of observation, and advice), *Listing* (the full STAR*NET-style report with a jump-to-section list), *Plot* (3D jobs: stations, observation lines, error ellipses and relative ellipses; drag to pan, pinch or buttons to zoom, tap a station for its numbers, a slider sets the ellipse exaggeration), *Residuals* (worst first; tap a row to open that line in the editor), *Points* (adjusted coordinates), *Messages*. Download the listing (`.lst`) or the coordinates as CSV (`Point,Elevation`, `PNEZD`, or `Point,N,E`).
 
 ### If the chi-square test fails
 
@@ -108,6 +109,9 @@ The last row corrects version 0.1, which scaled always. The levelling run (error
 | Every observation std error | identical to the listing | |
 | Max coordinate difference vs `.pts` | 0.000016 m | 0.000027 m |
 | Std devs (error propagation) | within 0.0000005 m, unscaled | |
+| Station and relative error ellipses (25 + 18 rows / 9 + 15 rows) | axes and vertical within 0.000001 m, azimuth within 0.01 degree (68.27% confidence) | same, at 95% confidence; azimuths differ by at most a minute in the printed D-MM |
+
+Ellipse axes use the 2-D chi-square factor for the chosen confidence (2.448 at 95%, 1.515 at 68.27%); heights use the 1-D normal factor (1.960, 1.000). Which ellipses are listed follows the `.ELLIPSE` and `.RELATIVE` inline options in the manual (default: all stations; relative ellipses between stations joined by an observation). Both test jobs use `.REL` pair lists, so the "joined by an observation" default, `/OBS` and `/CON` are implemented from the manual but not checked against a listing. Angles and `M` records join the instrument station to both of their targets, which is my reading and also unchecked.
 
 **Known differences** (not hidden by loosened tolerances):
 

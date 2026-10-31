@@ -1,5 +1,6 @@
 // The results pages: summary (with advice), the full listing, residuals, adjusted points, messages.
 import { adviseOnAdjustment, worstResiduals, RHO_ARCSEC } from '../engine/index.js';
+import { initPlot, setPlotData, showPlot } from './plot.js';
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -22,9 +23,11 @@ let shown = null;          // { out, openLine }
 export function showPage(name) {
   for (const b of el.seg.querySelectorAll('.seg-btn')) b.setAttribute('aria-current', String(b.dataset.page === name));
   for (const p of document.querySelectorAll('#view-results .page')) p.hidden = p.id !== `page-${name}`;
+  if (name === 'plot') showPlot();
 }
 
 export function initResults() {
+  initPlot();
   el.seg.addEventListener('click', (e) => {
     const b = e.target.closest('.seg-btn');
     if (b) showPage(b.dataset.page);
@@ -45,6 +48,8 @@ export function renderResults(out, openLine) {
   renderResiduals();
   renderPoints();
   renderMessages();
+  $('plotTab').hidden = out.kind !== '3d';
+  if (out.kind === '3d') setPlotData(out);
   showPage('summary');
 }
 
