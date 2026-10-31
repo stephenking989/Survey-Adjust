@@ -66,7 +66,7 @@
 // are increased by the total error factor. Both real listings agree:
 //   - 1D levelling, error factor 6.336, test FAILED -> std devs scaled
 //     (station N02: 0.0000352 m unscaled x 6.336 = 0.000223 m as listed);
-//   - 3D pier job, error factor 0.968, test PASSED -> std devs NOT scaled
+//   - 3D network A, error factor 0.968, test PASSED -> std devs NOT scaled
 //     (max difference to the listing 5e-7 m unscaled, 6e-5 m if scaled).
 // This is settings.errorScaling = 'auto' (the default); 'always' and 'never'
 // are available too (see propagationScale in stats.js).

@@ -1,0 +1,24 @@
+# 2D loop traverse B: starts on a fixed bearing, goes round five stations and closes with an angle at the start; four sideshots. Metres.
+# Angles are angle-right (clockwise from backsight to foresight). Distances are horizontal.
+.UNITS METERS
+.UNITS DMS
+.ORDER NE
+.ORDER ATFROMTO
+.2D
+
+C Q01 5000.000 5000.000 ! !
+
+B Q01-Q02 N0-00-00E !
+D Q01-Q02 270.650
+
+TB Q01
+T Q02 189-29-39 355.570
+T Q03 276-43-11 416.320
+T Q04 263-16-11 525.610
+T Q05 262-34-11 371.970
+TE Q01 267-56-20 Q02
+
+M Q02-Q01-Q06 083-05-11 140.840
+M Q03-Q02-Q07 121-27-10 129.260
+M Q04-Q03-Q08 231-04-45 232.330
+M Q05-Q04-Q09 151-50-17 95.450

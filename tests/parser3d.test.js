@@ -6,8 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseDat, parseAngle, parseBearing, DatParseError } from '../engine/parser.js';
 import { near } from './helpers.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const local = (n) => path.join(here, 'fixtures', '3d', n);
+import { publicJob } from './jobs.js';
 
 test('parseAngle: D-M-S, packed DMS, decimal degrees, signs', () => {
   near(assert, parseAngle('087-14-00.3'), 87 + 14 / 60 + 0.3 / 3600, 1e-12);
@@ -43,8 +42,8 @@ test('direction set: DB / DM / DN / DV / DE with HI/HT and std errors', () => {
   const p = parseDat([
     '.3D', 'DB 100 # round 1',
     'DM P3 000-00-00.0 65.7767 083-00-18.7 1.483/0.000  # F1',
-    'DN 6004 074-12-36.8',
-    'DV 6005 111.0680 083-36-09.4 1.483/0.030 5 0.001 3',
+    'DN P4 074-12-36.8',
+    'DV P5 111.0680 083-36-09.4 1.483/0.030 5 0.001 3',
     'DE', 'DB 100', 'DM P3 000-00-00.2 65.7786 083-00-12.9 1.483/0.000', 'DE'].join('\n'));
   const r = p.records;
   assert.deepEqual(r.map((x) => x.type), ['DB', 'DM', 'DN', 'DV', 'DE', 'DB', 'DM', 'DE']);
@@ -102,10 +101,10 @@ test('3D control with per-component std errors', () => {
   assert.deepEqual(p.records[2].status, { north: 'fixed', east: 'fixed', elevation: 'fixed' });
 });
 
-// ---- Real jobs (tests/fixtures/3d) -----------------------------------------
+// ---- Real jobs (tests/fixtures, stations renamed) -----------------------------------------
 
-test('NET_A.dat parses completely: 192 DM, 24 sets, 25 C, no warnings', () => {
-  const p = parseDat(fs.readFileSync(local('NET_A.dat'), 'utf8'));
+test('3D network A parses completely: 192 DM, 24 sets, 25 C, no warnings', () => {
+  const p = parseDat(publicJob('pier').read('dat'));
   const count = (t) => p.records.filter((r) => r.type === t).length;
   assert.equal(count('DM'), 192);
   assert.equal(count('DB'), 24);
@@ -118,8 +117,8 @@ test('NET_A.dat parses completely: 192 DM, 24 sets, 25 C, no warnings', () => {
   assert.equal(p.records.filter((r) => r.type === 'C' && r.status.north === 'weighted').length, 3);
 });
 
-test('NET_B.dat parses completely (B, DN, DV, M, DM)', () => {
-  const p = parseDat(fs.readFileSync(local('NET_B.dat'), 'utf8'));
+test('3D network B parses completely (B, DN, DV, M, DM)', () => {
+  const p = parseDat(publicJob('control').read('dat'));
   const count = (t) => p.records.filter((r) => r.type === t).length;
   assert.equal(count('DM') + count('DN') + count('DV'), p.records.filter((r) => ['DM', 'DN', 'DV'].includes(r.type)).length);
   assert.ok(count('B') >= 1 && count('M') >= 1);

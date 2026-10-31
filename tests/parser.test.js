@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseDat, DatParseError, RECORD_PARSERS } from '../engine/parser.js';
-import { fixture } from './helpers.js';
+import { publicJob } from './jobs.js';
 
 test('comments, blank lines and CRLF are handled; line numbers are 1-based', () => {
   const p = parseDat('# header\r\n\r\nE A 100.0 !   # trailing comment\r\nL A-B 1.5 200\r\n');
@@ -72,11 +72,11 @@ test('.END stops reading', () => {
 });
 
 test('the real fixture parses to 1 control point and 50 level runs', () => {
-  const p = parseDat(fixture('LEVEL_JOB.dat'));
+  const p = parseDat(publicJob('level').read('dat'));
   assert.equal(p.records.filter((r) => r.type === 'E').length, 1);
   assert.equal(p.records.filter((r) => r.type === 'L').length, 50);
   assert.deepEqual(p.state.units, ['Meters']);
   assert.equal(p.warnings.length, 0);
   const first = p.records.find((r) => r.type === 'L');
-  assert.deepEqual([first.from, first.to, first.dElev, first.length, first.line], ['N01', 'N02', -0.129963, 40.207, 11]);
+  assert.deepEqual([first.from, first.to, first.dElev, first.length, first.line], ['N01', 'N02', -0.129963, 40.207, 7]);
 });

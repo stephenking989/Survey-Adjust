@@ -34,7 +34,7 @@ export const isNumber = (s) => NUMBER_RE.test(s);
 
 /**
  * '#' starts a comment (whole line or trailing). An apostrophe starts a
- * description that belongs to the record, e.g.  E N01 6000.0 ! 'BM N01'.
+ * description that belongs to the record, e.g.  E 100 6000.0 ! 'BM 100'.
  * Returns { body, description }.
  */
 function splitLine(raw) {

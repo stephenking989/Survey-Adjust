@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseDat, adjustNetwork3D, settingsFromSnproj, LINEAR_UNITS, runAdjustment, detectKind, AdjustmentError } from '../engine/index.js';
 import { geom } from '../engine/network3d.js';
 import { near } from './helpers.js';
+import { listingJob, SKIP_NO_LISTING } from './jobs.js';
 
 const R = 6372000;
 const DEG = Math.PI / 180;
@@ -97,12 +98,12 @@ test('runAdjustment routes level files and total-station files, and rejects a mi
   assert.throws(() => detectKind(parseDat('E A 100 !\nL A-B 1 100\nD A-B 100\n')), AdjustmentError);
 });
 
-// ---- Second real job (tests/fixtures/3d): one control point, fixed azimuth, M/DN/DV records ----
+// ---- Second real job: one control point, fixed azimuth, M/DN/DV records ----
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const file = (e) => path.join(here, 'fixtures', '3d', `NET_B.${e}`);
+const CJ = listingJob('control');
+const file = (e) => CJ.file(e);
 
-test('NET_B: counts, error factor, chi-square and coordinates match the STAR*NET run', () => {
+test('3D job B (one control point, fixed azimuth, M/DN/DV): counts, error factor, chi-square and coordinates match the STAR*NET run', { skip: CJ ? false : SKIP_NO_LISTING }, () => {
   const s = settingsFromSnproj(fs.readFileSync(file('snproj'), 'utf8'));
   const r = runAdjustment(fs.readFileSync(file('dat'), 'utf8'), s).result;
   assert.deepEqual([r.stats.nStations, r.stats.nObservations, r.stats.nUnknowns, r.stats.dof], [9, 246, 50, 196]);

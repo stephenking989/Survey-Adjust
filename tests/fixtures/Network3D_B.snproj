@@ -1,0 +1,325 @@
+*STAR*NET 3
+#
+# 14.0.2.9137
+#
+#
+[Adjustment]
+#
+adjustment_type                3D
+linear_units                   Meters
+angle_output_units             DMS
+local_or_grid_adjustment       0
+coordinate_projection          0
+coordinate_zone                0
+coordinate_system_use_wgs84    N
+utm_hemisphere                 N
+project_elevation              0.000000000000000
+local_default_datum            1
+common_datum_reduction         0.0000000000
+scale_factor                   1.0000000000
+geoid_height                   0.000000
+vert_defl_north                0.000000
+vert_defl_east                 0.000000
+coordinate_order               NE
+coordinate_order_north         N
+angle_station_order            At-From-To
+3D_input_mode                  Slope/Zenith
+index_of_refraction            0.0700000000
+earth_radius_meters            6372000.0000000000
+converge_limit                 0.0100000000
+maximum_iterations             10
+chi_sqr_percent_significance   5.0000
+fixed_linear_std_err           1.000000000000000e-07
+fixed_angular_std_err          1.000100000000000e-03
+perform_error_propagation      1
+ell_percent_confidence         95.0000
+longitude_convention           0
+geoid_modeling                 0
+geoid_file_select              0
+vert_defl_modeling             0
+vert_defl_file_select          0
+gps_factor                     0
+gps_factor_alt_vert            0
+gps_factor_horiz               1.000000
+gps_factor_vert                1.000000
+gps_centering                  0
+gps_centering_alt_vert         0
+gps_centering_horiz            0.000000
+gps_centering_vert             0.000000
+gps_defaults                   0
+gps_defaults_stderr            0.001000
+gps_defaults_ppm               0.000000
+gps_defaults_alt_vert          0
+gps_defaults_stderr_alt_vert   0.001000
+gps_defaults_ppm_alt_vert      0.000000
+gps_transformations            0
+gps_transform_type             0
+gps_transform_scale            0
+gps_transform_scale_flag       0
+gps_transform_scale_value      1.000000000000000
+gps_transform_rotations        0
+gps_transform_nrot             0
+gps_transform_nrot_flag        0
+gps_transform_nrot_value       0.0000000000
+gps_transform_erot             0
+gps_transform_erot_flag        0
+gps_transform_erot_value       0.0000000000
+gps_transform_urot             0
+gps_transform_urot_flag        0
+gps_transform_urot_value       0.0000000000
+opus_factor                    0
+opus_factor_alt_vert           0
+opus_factor_horiz              1.000000
+opus_factor_vert               1.000000
+opus_centering                 0
+opus_centering_alt_vert        0
+opus_centering_horiz           0.000000
+opus_centering_vert            0.000000
+gps_vector_serial_id           1
+#
+#
+[Listing]
+#
+print_input_file               0
+list_observations              1
+list_sideshot_observations     1
+list_adj_obs_residuals         1
+list_adj_dist_az               1
+list_converge                  1
+list_traverses                 1
+list_coordinates               1
+list_positions                 1
+list_sideshot_coordinates      1
+show_coord_changes             0
+coord_changes_from_entered     0
+list_file_references           1
+list_full_point_names          0
+list_clustalias_details        1
+list_bearing                   0
+list_standard_deviations       1
+list_station_ellipses          1
+list_relative_ellipses         1
+list_dir_set_orientations      0
+output_ext_dist_prec           0
+sort_coordinates               0
+sort_unadjusted_observations   0
+sort_adjusted_observations     2
+create_coordinate_file         1
+coordinate_output_script       Default
+create_position_file           0
+create_ground_scale_file       0
+ground_output_script           Default
+grnd_file_grid_enable          1
+grnd_file_grid_type            0
+grnd_file_grid_factor_local    1.000000000000000
+grnd_file_grid_factor          1.000000000000000
+grnd_file_rotation_enable      0
+grnd_file_rotation_type        1
+grnd_file_rotation_azimuth     0.0000000000
+grnd_file_rotation_rotation    0.0000000000
+grnd_file_trans_enable         0
+grnd_file_trans_type           1
+grnd_file_trans_use_coord      1
+grnd_file_trans_northing       0.0000000000
+grnd_file_trans_easting        0.0000000000
+number_coord_decimals          5
+number_position_decimals       7
+number_elevation_decimals      5
+create_dump_file               0
+dump_rel_connections           0
+create_progress_summary_file   0
+list_geoid_model               1
+list_vdef_model                1
+gps_weight_method              0
+gps_sort_unadjusted_vectors    0
+gps_sort_adjusted_vectors      0
+gps_enable_residual_summary    0
+gps_residual_summary           0
+gps_enable_ecef_values         0
+gps_earth_centered_values      0
+pos_tolerance_check            0
+pos_tolerance_value_meters     0.030480
+pos_tolerance_ppm              0.000000
+pos_tolerance_confidence       95.000000
+pos_tolerance_list_type        0
+ss_chk_network_names           0
+ss_chk_repeat_names            0
+test_level_loop_tolerance      0
+level_loop_tolerance_type      4
+level_loop_tolerance_custom    1.000000
+level_loop_tolerance_type_ngs  4
+level_loop_tolerance_type_nrc  9
+clustalias_is_2d               1
+clustalias_min_points          2
+clustalias_deselect_outofrange 1
+clustalias_htol                0.100000
+clustalias_vtol                0.100000
+autoadjust_max_std_res         3.0000000000
+autoadjust_outliers_removed    1
+autoadjust_max_iterations      20
+sideshotdetect_standard        1
+cid_listing_results            1
+cid_check_descriptions         1
+cid_repeated_descriptions      0
+cid_separator                  ;
+#
+#
+[Instrument]
+#
+distance_std_err               0.0010000000
+edm_ppm                        2.0000000000
+angle_std_err                  3.0000000000
+direction_std_err              3.0000000000
+azimuth_std_err                3.0000000000
+zenith_std_err                 3.0000000000
+delta_elev_std_err             0.0152400305
+delta_elev_ppm                 0.0000000000
+instrument_centering_error     0.0010000000
+target_centering_error         0.0010000000
+vertical_centering_error       0.0010000000
+level_section_type             LENGTH
+level_std_err                  0.000075978541827
+#
+#
+[DataFileList]
+#
+3 "Network3D_B.dat"
+#
+#
+[Plot]
+#
+plot_size_text                 15
+plot_ellipse_exaggeration      1.000000000000000
+plot_draw_transparent_text     0
+plot_draw_while_wnd_size_move  0
+plot_draw_extent_frame         0
+plot_draw_lost_connections     1
+plot_draw_only_fixed_stations  0
+plot_draw_only_fixed_stations  0
+plot_draw_only_fixed_stations  0
+NS_GroupVisibility             1
+CNS_MarkersVisible             1
+CNS_MarkersColor               16711680
+CNS_MarkersSize                6
+CNS_MarkersFVisible            1
+CNS_MarkersFColor              255
+CNS_MarkersFSize               6
+CNS_MarkersCVisible            1
+CNS_MarkersCColor              8388608
+CNS_MarkersCSize               6
+CNS_NamesVisible               1
+CNS_NamesColor                 128
+CNS_NamesSize                  10
+CNS_DescriptorsVisible         1
+CNS_DescriptorsColor           128
+CNS_DescriptorsSize            10
+CNS_GroupVisibility            1
+CNS_ConnectionsVisible         1
+CNS_ConnectionsColor           12976128
+CNS_ConnectionsLinetype        6
+GNS_ConnectionsVisible         1
+GNS_ConnectionsColor           198
+GNS_ConnectionsLinetype        6
+LNS_ConnectionsVisible         1
+LNS_ConnectionsColor           15073335
+LNS_ConnectionsLinetype        6
+CSS_GroupVisibility            1
+CSS_ConnectionsVisible         1
+CSS_ConnectionsColor           32768
+CSS_ConnectionsLinetype        6
+CSS_MarkersVisible             1
+CSS_MarkersColor               32768
+CSS_MarkersSize                6
+CSS_NamesVisible               1
+CSS_NamesColor                 128
+CSS_NamesSize                  10
+CSS_DescriptorsVisible         0
+CSS_DescriptorsColor           128
+CSS_DescriptorsSize            10
+GSS_GroupVisibility            0
+GSS_ConnectionsVisible         1
+GSS_ConnectionsColor           51200
+GSS_ConnectionsLinetype        6
+GSS_MarkersVisible             1
+GSS_MarkersColor               32768
+GSS_MarkersSize                6
+GSS_NamesVisible               1
+GSS_NamesColor                 128
+GSS_NamesSize                  10
+GSS_DescriptorsVisible         0
+GSS_DescriptorsColor           128
+GSS_DescriptorsSize            10
+Ellipses_GroupVisibility       1
+ErrorEllipsesVisible           1
+ErrorEllipsesColor             12480
+ErrorEllipsesLinetype          1
+RelativeEllipsesVisible        0
+RelativeEllipsesColor          10747968
+RelativeEllipsesLinetype       1
+plot_camera_position_x         6102.6426162720
+plot_camera_position_y         6057.8237113953
+plot_camera_position_z         5402.3624877930
+plot_target_position_x         6102.6427230835
+plot_target_position_y         6057.8237113953
+plot_target_position_z         6007.2018666267
+plot_up_vector_x               0.0000000000
+plot_up_vector_y               -1.0000000000
+plot_up_vector_z               0.0000000000
+plot_total_zoom                1.1785420032
+plot_font_name                 arial
+Show_Navigation_Cube           1
+OrbitPinPosVector_X            6126.1693261364
+OrbitPinPosVector_Y            6064.1137452154
+OrbitPinPosVector_Z            6004.7626142890
+HasOrbitPinPosChanged          0
+#
+#
+[DXF]
+#
+dxf_drawing_scale              100.0000000000
+dxf_symbol_size                0.5000000000
+dxf_lettering_size             0.5000000000
+dxf_lettering_slant            0.0000000000
+dxf_2d_only                    0
+dxf_coordinate_transformations 0
+dxf_layer_set_name             
+dxf_export_path                
+#
+#
+[KML]
+#
+kml_org_into_folders           1
+kml_place_name                 
+kml_export_path                
+kml_compress_file              0
+kml_altitude                   0
+kml_extend_paths_to_gnd        0
+kml_open_after_export          1
+kml_net_stn_export             1
+kml_net_stn_name               Network Stations
+kml_net_stn_color              16711680
+kml_net_stn_cnct_export        1
+kml_net_stn_cnct_name          Network Station Connections
+kml_net_stn_cnct_color         16711680
+kml_ss_stn_export              1
+kml_ss_stn_name                Sideshot Stations
+kml_ss_stn_color               65280
+kml_ss_stn_cnct_export         1
+kml_ss_stn_cnct_name           Sideshot Station Connections
+kml_ss_stn_cnct_color          65280
+#
+#
+[LandXML]
+#
+landxml_project_name           Network3D_B
+landxml_project_description    STAR*NET Adjusted Coordinates
+landxml_export_path            
+landxml_open_after_export      1
+#
+#
+[USER]
+#
+username                       
+email                          
+companyname                    
+companyurl                     

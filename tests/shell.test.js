@@ -72,7 +72,7 @@ test('no committed fixture carries a student number, instrument serial number or
   const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((d) => (
     d.isDirectory() ? (d.name === 'local' ? [] : walk(`${dir}/${d.name}`)) : [`${dir}/${d.name}`]));
   const files = walk('tests/fixtures');
-  assert.ok(files.length >= 13);
+  assert.ok(files.length >= 6);
   for (const f of files) {
     const text = read(f);
     assert.ok(!/\bW\d{7}\b/.test(text), `${f} contains a student number`);

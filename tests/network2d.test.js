@@ -172,3 +172,16 @@ test('a fixed bearing and a distance place the station at the far end, in either
   const back = run(['C 2 1000 2100 ! !', 'B 2-1 270-00-00 !', 'D 1-2 100.000'].join('\n'));
   near(assert, near1(back, '1').n, 1000, 1e-4); near(assert, near1(back, '1').e, 2000, 1e-4);
 });
+
+test('the two traverse test jobs adjust and pass at 10 mm and 10 arc-seconds', () => {
+  const s = settings({ distanceConstant: 0.01, direction: 10, angle: 10, azimuth: 10 });
+  const a = run(fs.readFileSync(path.join(here, 'fixtures', 'Traverse2D_A.dat'), 'utf8'), s);
+  const b = run(fs.readFileSync(path.join(here, 'fixtures', 'Traverse2D_B.dat'), 'utf8'), s);
+  for (const [out, counts] of [[a, [8, 6, 2]], [b, [19, 16, 3]]]) {
+    assert.equal(out.kind, '2d');
+    assert.deepEqual([out.result.stats.nObservations, out.result.stats.nUnknowns, out.result.stats.dof], counts);
+    assert.equal(out.result.stats.chiSquare.passed, true);
+  }
+  // Both are loops or links closed by observations, so the misclosure is small but not zero.
+  assert.ok(a.result.stats.sumSqStdRes > 0.5 && b.result.stats.sumSqStdRes > 0.5);
+});
