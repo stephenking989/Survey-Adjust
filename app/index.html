@@ -48,10 +48,22 @@
           <button type="button" class="btn" id="newFileBtn">New file</button>
         </div>
         <p class="muted small" id="addNote" hidden></p>
-        <p class="muted small">You can pick several files at once, including a STAR*NET <code>.snproj</code>: its settings and file order are used.</p>
+        <p class="muted small">You can pick several files at once, including a STAR*NET <code>.snproj</code>: its settings and file order are used. Leica <code>.gsi</code> files are converted to a <code>.dat</code> when added.</p>
+        <details>
+          <summary>GSI import options</summary>
+          <div class="row">
+            <div class="field"><label for="gsiCoords">Coordinates in the file</label>
+              <select id="gsiCoords"><option value="fixed">Fixed control (!)</option><option value="free">Approximate only (*)</option></select></div>
+            <div class="field"><label for="gsiVertical">Vertical angles are</label>
+              <select id="gsiVertical"><option value="zenith">Zenith angles</option><option value="elevation">Elevation angles</option></select></div>
+          </div>
+          <div class="field"><label for="gsiStation">Station name when the file has no station line</label>
+            <input id="gsiStation" type="text" placeholder="STN" autocomplete="off" autocapitalize="off" spellcheck="false" /></div>
+        </details>
         <details>
           <summary>Samples</summary>
           <button type="button" class="btn link" id="sampleBtn">Levelling sample (40 stations)</button>
+          <button type="button" class="btn link" id="sampleGsiBtn">Leica GSI sample (converted when loaded)</button>
           <button type="button" class="btn link" id="sample2dBtn">2D sample (two-loop traverse)</button>
           <button type="button" class="btn link" id="sample3dBtn">3D sample (5-station network)</button>
         </details>

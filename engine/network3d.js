@@ -204,7 +204,7 @@ export function adjustNetwork3D(parsed, settings) {
     obs.push({ kind: 'dist', rec: r, A, B, hi: r.hi || 0, ht: r.ht || 0, value: distance, errGiven, line: r.line, file: r.file });
   };
   const pushZen = (r, from, to, zenithDeg, errGiven) => {
-    if (twoD) return;
+    if (twoD || zenithDeg === null || zenithDeg === undefined) return;
     const A = sta(from, r); const B = sta(to, r);
     obs.push({ kind: 'zen', rec: r, A, B, hi: r.hi || 0, ht: r.ht || 0, value: zenithDeg * DEG, errGiven, line: r.line, file: r.file });
   };

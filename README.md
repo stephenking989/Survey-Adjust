@@ -14,9 +14,10 @@ No build step, no frameworks, no runtime dependencies. Plain JavaScript ES modul
 | 0.2 | 3D total-station networks: direction sets, slope distances, zenith angles, angles, azimuths, weighted/fixed control, starting coordinates computed from the observations |
 | 0.3 | Projects like STAR*NET's: several data files with include checkboxes and a reading order, an in-page editor for each file, Check data, a results page, and plain-language help when the chi-square test fails |
 | 0.4 | Error ellipses and a network plot (3D jobs): station and relative ellipses in the listing, matching STAR*NET's listings for both test jobs, and a pan-and-zoom plot with names, observation lines and ellipses |
-| **0.5 (now)** | **2D networks**: horizontal angles, directions, distances and azimuths with no heights or zeniths, and traverse data (`TB` / `T` / `TE`). Same listing, ellipses and plot as 3D, without the elevation parts. **Not yet checked against a real STAR*NET 2D listing** (see below) |
+| 0.5 | 2D networks: horizontal angles, directions, distances and azimuths with no heights or zeniths, and traverse data (`TB` / `T` / `TE`). Same listing, ellipses and plot as 3D, without the elevation parts. **Not yet checked against a real STAR*NET 2D listing** (see below) |
+| **0.6 (now)** | **Leica GSI import** (GSI8 and GSI16): add a `.gsi` file and it is converted to a `.dat` you can edit. **Written from Leica's format guide and tested on generated files; not yet tried on files from a real instrument** |
 | Next | Direction correlation from instrument centering, 3D-format data in a 2D job, traverses that start from a bearing |
-| Later | Importers: Trimble JobXML, Carlson RW5, Leica GSI |
+| Later | Importers: Trimble JobXML, Carlson RW5 |
 | Later | Grid / NAD83(CSRS) support |
 
 ## Using it
@@ -59,7 +60,23 @@ Add the app to your home screen (or install it from the browser menu) and it wor
 | `TB` backsight, `T` at angle distance, `TE` end [closing angle station] | traverses (2D format). Each `T` line becomes an `M` record (angle and distance from that station, previous point to next point), so a traverse adjusts exactly like the `M` lines it stands for. A backsight or closing angle given as a fixed bearing is refused for now |
 | `DM to direction distance` (no zenith) | the 2D form of a direction set; the 3D form adds the zenith |
 | A code written against a numeric station name (`C1 5000 5000`, `T2 90-00-00 100`) | read as `C 1 ...` and `T 2 ...`, as the manual's own examples are written |
+| Leica `.gsi` (GSI8 / GSI16) | converted to a `.dat` on import, see below |
 | Anything else (`G`, ...) | kept as "unsupported" with a warning |
+
+### Leica GSI import
+
+Add a `.gsi` file with **Add files** (or the GSI sample under Samples) and it becomes a `.dat` in the project, which you can then edit like any other. The reader follows Leica's *GSI Online* guide: each block is a two-character word index, information characters, a unit code in position 6, a sign, and 8 (GSI8) or 16 (GSI16) data characters with the decimal point implied. The unit codes (metres, feet, gon, degrees, DMS, mils and their decimals) are read exactly as the guide lists them. Word 11 is the point id, 21 the horizontal angle, 22 the vertical angle, 31/32/33 the slope distance, horizontal distance and height difference, 81-83 target coordinates, 84-86 station coordinates, 87 target height and 88 instrument height.
+
+What a GSI file does not say, and what the converter assumes (it reports each of these when it applies):
+
+- A line with station words (84-86 or 16) starts a setup; observation lines belong to the current station. With no station line the observations are assumed to come from the station named in the import options (default `STN`).
+- Pointings from one station form a direction set until a target repeats, which starts the next set.
+- A zenith over 180 degrees is a face 2 pointing and is reduced to face 1 (zenith to 360 minus zenith, Hz minus 180).
+- Station and target coordinates become `C` records, fixed by default (or approximate only, in the options).
+- A horizontal distance with a height difference, or with a zenith, is converted to a slope distance and zenith, with no curvature or refraction.
+- Vertical angles are taken as zenith angles; if most are under 50 degrees the converter warns that the instrument may be reading elevation angles, and the import options can switch to that.
+
+The converter is checked by writing a job out as GSI with an independent writer and reading it back: the 3D sample comes back within a millimetre, which is the resolution GSI stores. It has **not** been tried on files from a real instrument, whose station and setup conventions vary; send a few to test.
 
 New record types are one function and one line in `RECORD_PARSERS` (`engine/parser.js`).
 

@@ -18,6 +18,7 @@ import { defaultSettings, linearUnitsFromDat, LINEAR_UNITS } from './project.js'
 export { parseDat, DatParseError, RECORD_PARSERS, parseAngle, parseBearing } from './parser.js';
 export { parseDataFiles, DataFileError } from './files.js';
 export { adviseOnAdjustment, worstResiduals } from './advice.js';
+export { gsiToDat, readGsi, parseGsiLine, looksLikeGsi, GsiError } from './gsi.js';
 export { ellipseTables, stationEllipse, relativeEllipse, connectedPairs } from './ellipse.js';
 export { adjustLevelling, AdjustmentError } from './level.js';
 export { adjustNetwork3D, errorModel } from './network3d.js';
