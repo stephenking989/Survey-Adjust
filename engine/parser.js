@@ -55,16 +55,34 @@ function splitLine(raw) {
 // ---------------------------------------------------------------------------
 
 /** Options that change how later records are read. All options are stored regardless. */
+const onOff = (args, dflt) => (args.length ? /^(on|yes|true|1)$/i.test(args[0]) : dflt);
+
 const OPTION_HANDLERS = {
-  UNITS(state, args) { state.units = args; },
-  ORDER(state, args) { state.order = (args[0] || 'NE').toUpperCase(); },
+  // Several .UNITS lines add up: ".UNITS Meters" then ".UNITS DMS".
+  UNITS(state, args) { for (const a of args) if (!state.units.includes(a)) state.units.push(a); },
+  // .ORDER carries two unrelated settings, told apart by their value:
+  // coordinate order (NE / EN) and angle station order (ATFROMTO / FROMATTO).
+  ORDER(state, args) {
+    for (const a of args) {
+      const w = a.toUpperCase();
+      if (w === 'NE' || w === 'EN') state.order = w;
+      else if (w === 'ATFROMTO' || w === 'FROMATTO') state.angleOrder = w;
+    }
+  },
   '2D'(state) { state.dimension = 2; },
   '3D'(state) { state.dimension = 3; },
   LEVEL(state, args) { state.level = { stdErr: Number(args[0]), mode: (args[1] || 'LENGTH').toUpperCase() }; },
+  CURVE(state, args) { state.curve = onOff(args, true); },
+  REF(state, args) { state.refraction = Number(args[0]); },
+  DELTA(state, args) { state.delta = onOff(args, true); },
 };
 
 function initialState() {
-  return { units: [], order: 'NE', dimension: 2, level: null };
+  return {
+    units: [], order: 'NE', angleOrder: 'ATFROMTO', dimension: 2, level: null,
+    curve: true, refraction: null, delta: false,
+    openSet: null, setCount: 0,    // direction-set bookkeeping (DB ... DE)
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -173,12 +191,229 @@ function parseL(t, ctx) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Angles, station lists and the common observation tail (2D / 3D records).
+// ---------------------------------------------------------------------------
+
+/**
+ * Angle token -> decimal degrees. Accepts "087-14-00.3" (D-M-S), a quadrant
+ * bearing is handled by parseBearing. A bare number is packed DDD.MMSSss under
+ * .UNITS DMS (the default) and plain decimal degrees under .UNITS DD.
+ */
+export function parseAngle(token, units = []) {
+  const t = String(token);
+  const sign = t.startsWith('-') ? -1 : 1;
+  const body = t.replace(/^[+-]/, '');
+  let deg;
+  if (body.includes('-')) {
+    const parts = body.split('-');
+    if (parts.length > 3 || !parts.every((p) => p !== '' && isNumber(p))) return NaN;
+    const [d, m = 0, s = 0] = parts.map(Number);
+    if (m >= 60 || s >= 60) return NaN;
+    deg = d + m / 60 + s / 3600;
+  } else if (!isNumber(body)) {
+    return NaN;
+  } else if (units.some((u) => /^dd$/i.test(u))) {
+    deg = Number(body);
+  } else {
+    const [whole, frac = ''] = body.split('.');
+    const mm = Number((frac.slice(0, 2) || '0').padEnd(2, '0'));
+    const ss = Number(`${(frac.slice(2, 4) || '0').padEnd(2, '0')}.${frac.slice(4) || '0'}`);
+    if (mm >= 60 || ss >= 60) return NaN;
+    deg = Number(whole) + mm / 60 + ss / 3600;
+  }
+  return sign * deg;
+}
+
+/** Bearing token -> azimuth in degrees: "N45-30-00E", "S10-00-00W" or a plain azimuth. */
+export function parseBearing(token, units = []) {
+  const q = /^([NSns])(.+?)([EWew])$/.exec(token);
+  if (!q) return parseAngle(token, units);
+  const a = parseAngle(q[2], units);
+  const ns = q[1].toUpperCase(); const ew = q[3].toUpperCase();
+  if (ns === 'N') return ew === 'E' ? a : 360 - a;
+  return ew === 'E' ? 180 - a : 180 + a;
+}
+
+/**
+ * Take `n` station names off the front of the tokens. Either one hyphenated
+ * token ("6002-6000-6007") or n separate tokens. Returns { names, rest }.
+ */
+function takeStations(tokens, n, ctx, what) {
+  if (tokens.length && n > 1 && tokens[0].split('-').length === n && tokens[0].split('-').every(Boolean)) {
+    return { names: tokens[0].split('-'), rest: tokens.slice(1) };
+  }
+  if (tokens.length < n) ctx.fail(`${what} needs ${n} station name${n > 1 ? 's' : ''}`);
+  return { names: tokens.slice(0, n), rest: tokens.slice(n) };
+}
+
+/** Put at/from/to names in the right slots for the .ORDER ATFROMTO | FROMATTO setting. */
+function atFromTo(names, ctx) {
+  return ctx.state.angleOrder === 'FROMATTO'
+    ? { at: names[1], from: names[0], to: names[2] }
+    : { at: names[0], from: names[1], to: names[2] };
+}
+
+/**
+ * Observation tail: the part after the required values.
+ *   HI/HT       instrument and target heights ("1.483/0.030")
+ *   number      a std error, in the order the record lists its quantities
+ *   !           that quantity is fixed (held exactly)
+ *   *           that quantity uses the project default
+ * Returns { hi, ht, errs } with errs = [number | 'fixed' | null, ...].
+ */
+function parseTail(tokens, ctx) {
+  const out = { hi: null, ht: null, errs: [] };
+  for (const t of tokens) {
+    const hh = /^([+-]?(?:\d+\.?\d*|\.\d+))\/([+-]?(?:\d+\.?\d*|\.\d+))$/.exec(t);
+    if (hh) { out.hi = Number(hh[1]); out.ht = Number(hh[2]); }
+    else if (t === '!') out.errs.push('fixed');
+    else if (t === '*') out.errs.push(null);
+    else if (isNumber(t)) out.errs.push(Number(t));
+    else ctx.fail(`unexpected "${t}"`);
+  }
+  return out;
+}
+
+const errsAs = (errs, names) => Object.fromEntries(names.map((n, i) => [n, errs[i] === undefined ? null : errs[i]]));
+const need = (t, k, ctx, usage) => { if (t.length < k) ctx.fail(`needs: ${usage}`); };
+const num = (s, ctx, what) => { if (!isNumber(s)) ctx.fail(`${what} must be a number, got "${s}"`); return Number(s); };
+const ang = (s, ctx, what) => {
+  const v = parseAngle(s, ctx.state.units);
+  if (Number.isNaN(v)) ctx.fail(`${what} "${s}" is not a valid angle`);
+  return v;
+};
+
+/** A at-from-to angle [stdErr] */
+function parseA(t, ctx) {
+  const { names, rest } = takeStations(t, 3, ctx, 'A record');
+  need(rest, 1, ctx, 'A at-from-to angle [stdErr]');
+  const tail = parseTail(rest.slice(1), ctx);
+  return { type: 'A', ...atFromTo(names, ctx), angle: ang(rest[0], ctx, 'angle'), stdErr: errsAs(tail.errs, ['angle']), description: ctx.description };
+}
+
+/** B from-to bearing|azimuth [stdErr | !] */
+function parseB(t, ctx) {
+  const { names, rest } = takeStations(t, 2, ctx, 'B record');
+  need(rest, 1, ctx, 'B from-to bearing [stdErr]');
+  const az = parseBearing(rest[0], ctx.state.units);
+  if (Number.isNaN(az)) ctx.fail(`bearing "${rest[0]}" is not valid`);
+  const tail = parseTail(rest.slice(1), ctx);
+  return { type: 'B', from: names[0], to: names[1], azimuth: az, stdErr: errsAs(tail.errs, ['azimuth']), description: ctx.description };
+}
+
+/** D from-to distance [stdErr] [HI/HT]    (slope distance in 3D) */
+function parseD(t, ctx) {
+  const { names, rest } = takeStations(t, 2, ctx, 'D record');
+  need(rest, 1, ctx, 'D from-to distance [stdErr] [HI/HT]');
+  const tail = parseTail(rest.slice(1), ctx);
+  return { type: 'D', from: names[0], to: names[1], distance: num(rest[0], ctx, 'distance'), hi: tail.hi, ht: tail.ht, stdErr: errsAs(tail.errs, ['distance']), description: ctx.description };
+}
+
+/** V from-to zenith [stdErr] [HI/HT] */
+function parseV(t, ctx) {
+  const { names, rest } = takeStations(t, 2, ctx, 'V record');
+  need(rest, 1, ctx, 'V from-to zenith [stdErr] [HI/HT]');
+  const tail = parseTail(rest.slice(1), ctx);
+  return { type: 'V', from: names[0], to: names[1], zenith: ang(rest[0], ctx, 'zenith'), hi: tail.hi, ht: tail.ht, stdErr: errsAs(tail.errs, ['zenith']), description: ctx.description };
+}
+
+/** M at-from-to angle distance [zenith] [stdErrs] [HI/HT]   - angle + distance (+ zenith) in one line */
+function parseM(t, ctx) {
+  const { names, rest } = takeStations(t, 3, ctx, 'M record');
+  need(rest, 2, ctx, 'M at-from-to angle distance [zenith] [HI/HT]');
+  const angle = ang(rest[0], ctx, 'angle');
+  const distance = num(rest[1], ctx, 'distance');
+  let tailTokens = rest.slice(2);
+  let zenith = null;
+  if (tailTokens.length && !/\/|^[!*]$/.test(tailTokens[0]) && !Number.isNaN(parseAngle(tailTokens[0], ctx.state.units)) && /-/.test(tailTokens[0])) {
+    zenith = ang(tailTokens[0], ctx, 'zenith');
+    tailTokens = tailTokens.slice(1);
+  }
+  const tail = parseTail(tailTokens, ctx);
+  return {
+    type: 'M', ...atFromTo(names, ctx), angle, distance, zenith, hi: tail.hi, ht: tail.ht,
+    stdErr: errsAs(tail.errs, zenith === null ? ['angle', 'distance'] : ['angle', 'distance', 'zenith']), description: ctx.description,
+  };
+}
+
+// ---- Direction sets: DB at ... DE -----------------------------------------
+// A set is one round of pointings from one instrument station. Each set has its
+// own unknown circle orientation in the adjustment, so every record inside a
+// set carries the set number. DB opens, DE closes.
+
+/** DB at-station */
+function parseDB(t, ctx) {
+  if (ctx.state.openSet) ctx.fail(`DB inside an open direction set (opened on line ${ctx.state.openSet.line}; missing DE)`);
+  need(t, 1, ctx, 'DB at-station');
+  const set = { id: ++ctx.state.setCount, at: t[0], line: ctx.line };
+  ctx.state.openSet = set;
+  return { type: 'DB', set: set.id, at: set.at, description: ctx.description };
+}
+
+function inSet(ctx, code) {
+  if (!ctx.state.openSet) ctx.fail(`${code} outside a direction set (no DB before it)`);
+  return ctx.state.openSet;
+}
+
+/** DE - ends the set */
+function parseDE(t, ctx) {
+  const set = inSet(ctx, 'DE');
+  ctx.state.openSet = null;
+  return { type: 'DE', set: set.id };
+}
+
+/** DN to direction [stdErr]     direction only */
+function parseDN(t, ctx) {
+  const set = inSet(ctx, 'DN');
+  need(t, 2, ctx, 'DN to direction [stdErr]');
+  const tail = parseTail(t.slice(2), ctx);
+  return { type: 'DN', set: set.id, at: set.at, to: t[0], direction: ang(t[1], ctx, 'direction'), stdErr: errsAs(tail.errs, ['direction']), description: ctx.description };
+}
+
+/** DM to direction distance zenith [stdErrs] [HI/HT]    direction + slope distance + zenith */
+function parseDM(t, ctx) {
+  const set = inSet(ctx, 'DM');
+  need(t, 4, ctx, 'DM to direction distance zenith [HI/HT]');
+  const tail = parseTail(t.slice(4), ctx);
+  return {
+    type: 'DM', set: set.id, at: set.at, to: t[0],
+    direction: ang(t[1], ctx, 'direction'), distance: num(t[2], ctx, 'distance'), zenith: ang(t[3], ctx, 'zenith'),
+    hi: tail.hi, ht: tail.ht, stdErr: errsAs(tail.errs, ['direction', 'distance', 'zenith']), description: ctx.description,
+  };
+}
+
+/** DV to distance zenith [HI/HT]    (inside a set) or  DV from-to distance zenith [HI/HT] (outside) */
+function parseDV(t, ctx) {
+  const set = ctx.state.openSet;
+  let from; let to; let rest;
+  if (set) { from = set.at; to = t[0]; rest = t.slice(1); } else {
+    const s = takeStations(t, 2, ctx, 'DV record');
+    [from, to] = s.names; rest = s.rest;
+  }
+  need(rest, 2, ctx, set ? 'DV to distance zenith [HI/HT]' : 'DV from-to distance zenith [HI/HT]');
+  const tail = parseTail(rest.slice(2), ctx);
+  return {
+    type: 'DV', set: set ? set.id : null, from, to, distance: num(rest[0], ctx, 'distance'), zenith: ang(rest[1], ctx, 'zenith'),
+    hi: tail.hi, ht: tail.ht, stdErr: errsAs(tail.errs, ['distance', 'zenith']), description: ctx.description,
+  };
+}
+
 /** Register new record types here. */
 export const RECORD_PARSERS = {
   E: parseE,
   C: parseC,
   L: parseL,
-  // Next session: DB, DM, DE, DV, M, B ...
+  A: parseA,
+  B: parseB,
+  D: parseD,
+  V: parseV,
+  M: parseM,
+  DB: parseDB,
+  DE: parseDE,
+  DN: parseDN,
+  DM: parseDM,
+  DV: parseDV,
 };
 
 // ---------------------------------------------------------------------------
@@ -229,6 +464,9 @@ export function parseDat(text, opts = {}) {
     rec.line = line;
     rec.file = fileIndex;
     records.push(rec);
+  }
+  if (state.openSet) {
+    warnings.push({ line: state.openSet.line, message: `Direction set ${state.openSet.id} at ${state.openSet.at} was never closed with DE` });
   }
   return { options, state, records, warnings };
 }
