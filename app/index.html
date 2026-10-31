@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f5c6e" />
   <meta name="description" content="Offline least squares adjustment for surveyors - levelling and 3D total-station networks" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -22,87 +22,194 @@
     </div>
   </header>
 
+  <nav class="tabs" aria-label="Sections">
+    <div class="wrap tabs-in">
+      <button type="button" class="tab" data-tab="data" aria-current="page">Data</button>
+      <button type="button" class="tab" data-tab="options">Options</button>
+      <button type="button" class="tab" data-tab="results">Results <span id="resultsDot" class="dot" hidden></span></button>
+    </div>
+  </nav>
+
   <main class="wrap">
-    <section class="card" aria-labelledby="h-job">
-      <h2 id="h-job"><span class="step">1</span> Job file</h2>
-      <label class="btn primary file-btn" for="datInput">Open .dat file</label>
-      <input id="datInput" type="file" class="visually-hidden" />
-      <p class="muted" id="fileInfo">No file loaded. Pick a STAR*NET <code>.dat</code> from your phone or a USB stick.</p>
-      <details>
-        <summary>Paste data instead</summary>
-        <textarea id="pasteArea" rows="6" spellcheck="false" autocapitalize="off" autocomplete="off"
-                  placeholder="E 100 1000.000 !&#10;L 100-A 0.512 120.5"></textarea>
-        <button type="button" class="btn" id="usePaste">Use pasted text</button>
-      </details>
-      <button type="button" class="btn link" id="sampleBtn">Try the levelling sample (LEVEL_JOB)</button>
-      <button type="button" class="btn link" id="sample3dBtn">Try the 3D sample (5-station network)</button>
-    </section>
+    <!-- ============ DATA: the file list ============ -->
+    <div id="view-data" class="view">
+      <section class="card" aria-labelledby="h-files">
+        <h2 id="h-files">Project data files</h2>
+        <div class="field">
+          <label for="projectName">Project name</label>
+          <input id="projectName" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </div>
+        <p class="muted">Files are read in this order. Untick a file to leave it out of the next run. Tap a name to edit it.</p>
+        <ul id="fileList" class="files"></ul>
+        <p id="fileEmpty" class="muted" hidden>No files yet. Add your <code>.dat</code> files, start a new one, or try a sample.</p>
+        <div class="actions">
+          <label class="btn" for="addInput">Add files</label>
+          <input id="addInput" type="file" class="visually-hidden" multiple />
+          <button type="button" class="btn" id="newFileBtn">New file</button>
+        </div>
+        <p class="muted small" id="addNote" hidden></p>
+        <p class="muted small">You can pick several files at once, including a STAR*NET <code>.snproj</code>: its settings and file order are used.</p>
+        <details>
+          <summary>Samples</summary>
+          <button type="button" class="btn link" id="sampleBtn">Levelling sample (LEVEL_JOB)</button>
+          <button type="button" class="btn link" id="sample3dBtn">3D sample (5-station network)</button>
+        </details>
+      </section>
 
-    <section class="card" aria-labelledby="h-set">
-      <h2 id="h-set"><span class="step">2</span> Project settings</h2>
-      <p class="muted">STAR*NET keeps these in the <code>.snproj</code>, not the <code>.dat</code>.</p>
-      <p class="muted" id="kindInfo" hidden></p>
-      <div class="field" id="levelFields">
-        <label for="levelStdErr">Differential level std error <span id="levelUnit">(m per km)</span></label>
-        <input id="levelStdErr" type="number" inputmode="decimal" step="any" min="0" value="0.0005" />
-      </div>
-      <div id="tsFields" hidden>
-        <h3>Instrument <span id="insUnit" class="muted"></span></h3>
-        <div class="grid">
-          <div class="field"><label for="insDist">Distance constant</label><input id="insDist" type="number" inputmode="decimal" step="any" min="0" value="0.0091440183" /></div>
-          <div class="field"><label for="insPpm">Distance ppm</label><input id="insPpm" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
-          <div class="field"><label for="insDir">Direction (")</label><input id="insDir" type="number" inputmode="decimal" step="any" min="0" value="3" /></div>
-          <div class="field"><label for="insZen">Zenith (")</label><input id="insZen" type="number" inputmode="decimal" step="any" min="0" value="10" /></div>
-          <div class="field"><label for="insAng">Angle (")</label><input id="insAng" type="number" inputmode="decimal" step="any" min="0" value="4" /></div>
-          <div class="field"><label for="insAz">Azimuth (")</label><input id="insAz" type="number" inputmode="decimal" step="any" min="0" value="4" /></div>
-          <div class="field"><label for="cenI">Centering: instrument</label><input id="cenI" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
-          <div class="field"><label for="cenT">Centering: target</label><input id="cenT" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
-          <div class="field"><label for="cenV">Centering: vertical</label><input id="cenV" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
-          <div class="field"><label for="refr">Refraction coefficient</label><input id="refr" type="number" inputmode="decimal" step="any" value="0.07" /></div>
+      <section class="card" aria-labelledby="h-run">
+        <h2 id="h-run">Run</h2>
+        <p class="muted" id="kindInfo">Add a data file to begin.</p>
+        <div class="actions">
+          <button type="button" class="btn" id="checkBtn" disabled>Check data</button>
+          <button type="button" class="btn primary" id="adjustBtn" disabled>Adjust</button>
         </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label for="chiPercent">Chi-square level (%)</label>
-          <input id="chiPercent" type="number" inputmode="decimal" step="any" min="0.1" max="50" value="5" />
+        <div id="problems" class="problems" hidden></div>
+      </section>
+    </div>
+
+    <!-- ============ DATA: editing one file ============ -->
+    <div id="view-editor" class="view" hidden>
+      <section class="card editor-card" aria-label="File editor">
+        <div class="ed-bar">
+          <button type="button" class="btn small-btn" id="edBack">&larr; Files</button>
+          <input id="edName" class="ed-name" type="text" aria-label="File name" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <label class="ed-inc"><input id="edInclude" type="checkbox" /> read</label>
         </div>
-        <div class="field">
-          <label for="stdResFlag">Flag |StdRes| over</label>
-          <input id="stdResFlag" type="number" inputmode="decimal" step="any" min="0" value="3" />
+        <div class="ed-tools">
+          <button type="button" class="btn small-btn" id="edUndo" aria-label="Undo">Undo</button>
+          <button type="button" class="btn small-btn" id="edRedo" aria-label="Redo">Redo</button>
+          <input id="edFind" type="search" class="ed-find" placeholder="Find" aria-label="Find in this file" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button type="button" class="btn small-btn" id="edFindNext" aria-label="Find next">Next</button>
+          <button type="button" class="btn small-btn" id="edDownload">Save .dat</button>
         </div>
-      </div>
-      <details>
-        <summary>More</summary>
-        <label class="check"><input id="scaleFactor" type="checkbox" checked /> Scale std devs by the total error factor when the chi-square test fails (STAR*NET's rule)</label>
-        <label class="btn file-btn small" for="snprojInput">Load settings from .snproj</label>
+        <div class="ed-keys" aria-label="Characters that are hard to type on a phone">
+          <button type="button" class="key-btn" data-ins="-">-</button>
+          <button type="button" class="key-btn" data-ins=".">.</button>
+          <button type="button" class="key-btn" data-ins="!">!</button>
+          <button type="button" class="key-btn" data-ins="*">*</button>
+          <button type="button" class="key-btn" data-ins="#">#</button>
+          <button type="button" class="key-btn" data-ins="'">'</button>
+          <button type="button" class="key-btn" data-ins="/">/</button>
+          <button type="button" class="key-btn" data-ins="  ">space&times;2</button>
+        </div>
+        <div class="ed-box">
+          <pre id="edGutter" class="ed-gutter" aria-hidden="true"></pre>
+          <textarea id="edText" class="ed-text" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Data file text"></textarea>
+        </div>
+        <div class="ed-status"><span id="edPos">Ln 1, Col 1</span> <span id="edCount"></span> <span id="edSaved" class="muted">Saved on this device</span></div>
+        <div id="edProblems" class="problems" hidden></div>
+        <div class="actions">
+          <button type="button" class="btn" id="edCheck">Check data</button>
+          <button type="button" class="btn primary" id="edAdjust">Adjust</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ OPTIONS ============ -->
+    <div id="view-options" class="view" hidden>
+      <section class="card" aria-labelledby="h-set">
+        <h2 id="h-set">Project options</h2>
+        <p class="muted">STAR*NET keeps these in the <code>.snproj</code>, not the <code>.dat</code>. A wrong value here is the usual reason a good job fails the chi-square test.</p>
+        <label class="btn file-btn small" for="snprojInput">Load options from .snproj</label>
         <input id="snprojInput" type="file" class="visually-hidden" />
-      </details>
-    </section>
+        <p class="muted" id="optInfo" hidden></p>
+        <div class="field" id="levelFields">
+          <label for="levelStdErr">Differential level std error <span id="levelUnit">(m per km)</span></label>
+          <input id="levelStdErr" type="number" inputmode="decimal" step="any" min="0" value="0.0005" />
+        </div>
+        <div id="tsFields" hidden>
+          <h3>Instrument <span id="insUnit" class="muted"></span></h3>
+          <div class="grid">
+            <div class="field"><label for="insDist">Distance constant</label><input id="insDist" type="number" inputmode="decimal" step="any" min="0" value="0.0091440183" /></div>
+            <div class="field"><label for="insPpm">Distance ppm</label><input id="insPpm" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+            <div class="field"><label for="insDir">Direction (")</label><input id="insDir" type="number" inputmode="decimal" step="any" min="0" value="3" /></div>
+            <div class="field"><label for="insZen">Zenith (")</label><input id="insZen" type="number" inputmode="decimal" step="any" min="0" value="10" /></div>
+            <div class="field"><label for="insAng">Angle (")</label><input id="insAng" type="number" inputmode="decimal" step="any" min="0" value="4" /></div>
+            <div class="field"><label for="insAz">Azimuth (")</label><input id="insAz" type="number" inputmode="decimal" step="any" min="0" value="4" /></div>
+            <div class="field"><label for="cenI">Centering: instrument</label><input id="cenI" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+            <div class="field"><label for="cenT">Centering: target</label><input id="cenT" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+            <div class="field"><label for="cenV">Centering: vertical</label><input id="cenV" type="number" inputmode="decimal" step="any" min="0" value="0" /></div>
+            <div class="field"><label for="refr">Refraction coefficient</label><input id="refr" type="number" inputmode="decimal" step="any" value="0.07" /></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="chiPercent">Chi-square level (%)</label>
+            <input id="chiPercent" type="number" inputmode="decimal" step="any" min="0.1" max="50" value="5" />
+          </div>
+          <div class="field">
+            <label for="stdResFlag">Flag |StdRes| over</label>
+            <input id="stdResFlag" type="number" inputmode="decimal" step="any" min="0" value="3" />
+          </div>
+        </div>
+        <label class="check"><input id="scaleFactor" type="checkbox" checked /> Scale std devs by the total error factor when the chi-square test fails (STAR*NET's rule)</label>
+        <button type="button" class="btn small" id="resetOpts">Reset options to defaults</button>
+        <div id="optError" class="alert error" role="alert" hidden></div>
+      </section>
+    </div>
 
-    <section class="card" aria-labelledby="h-run">
-      <h2 id="h-run"><span class="step">3</span> Adjust</h2>
-      <button type="button" class="btn primary big" id="adjustBtn" disabled>Adjust</button>
-      <div id="errorBox" class="alert error" role="alert" hidden></div>
-    </section>
+    <!-- ============ RESULTS ============ -->
+    <div id="view-results" class="view" hidden>
+      <section class="card" aria-labelledby="h-res">
+        <h2 id="h-res">Results</h2>
+        <p id="noResults" class="muted">No results yet. Add your data on the Data tab and press Adjust.</p>
+        <div id="resBody" hidden>
+          <div id="stale" class="alert warn" hidden>The data or options changed after this run. <button type="button" class="btn link inline" id="rerun">Adjust again</button></div>
+          <div class="seg" role="tablist" aria-label="Result pages">
+            <button type="button" class="seg-btn" data-page="summary" aria-current="true">Summary</button>
+            <button type="button" class="seg-btn" data-page="listing">Listing</button>
+            <button type="button" class="seg-btn" data-page="residuals">Residuals</button>
+            <button type="button" class="seg-btn" data-page="points">Points</button>
+            <button type="button" class="seg-btn" data-page="messages">Messages <span id="msgCount" class="count"></span></button>
+          </div>
 
-    <section id="results" class="card" aria-labelledby="h-res" hidden>
-      <h2 id="h-res">Results</h2>
-      <div id="verdict" class="verdict"></div>
-      <dl id="summary" class="summary"></dl>
-      <div class="legend"><span class="key warn"></span> failed test / warning <span class="key flag"></span> |StdRes| over limit</div>
-      <pre id="report" class="report" tabindex="0" aria-label="Adjustment report"></pre>
-      <div class="actions">
-        <button type="button" class="btn" id="dlReport">Download report (.lst)</button>
-        <span class="csv">
-          <select id="csvFormat" aria-label="CSV format">
-            <option value="PE">CSV: Point, Elevation</option>
-            <option value="PNEZD">CSV: PNEZD</option>
-            <option value="PNE">CSV: Point, N, E</option>
-          </select>
-          <button type="button" class="btn" id="dlCsv">Download CSV</button>
-        </span>
-      </div>
-    </section>
+          <div id="page-summary" class="page">
+            <div id="verdict" class="verdict"></div>
+            <dl id="summary" class="summary"></dl>
+            <div id="advice" class="advice"></div>
+            <div id="classes"></div>
+          </div>
+
+          <div id="page-listing" class="page" hidden>
+            <div class="field"><label for="jump">Jump to section</label><select id="jump"></select></div>
+            <div class="legend"><span class="key warn"></span> failed test / warning <span class="key flag"></span> |StdRes| over limit</div>
+            <pre id="report" class="report" tabindex="0" aria-label="Adjustment listing"></pre>
+          </div>
+
+          <div id="page-residuals" class="page" hidden>
+            <div class="row">
+              <div class="field"><label for="resSort">Order</label>
+                <select id="resSort"><option value="worst">Worst first</option><option value="file">File and line</option></select></div>
+              <div class="field"><label for="resFilter">Show</label>
+                <select id="resFilter"><option value="top">Top 25</option><option value="flagged">Flagged only</option><option value="all">All</option></select></div>
+            </div>
+            <div class="table-wrap"><table id="resTable" class="data"></table></div>
+            <p class="muted small">Tap a row to open that line in the editor.</p>
+          </div>
+
+          <div id="page-points" class="page" hidden>
+            <div class="table-wrap"><table id="ptsTable" class="data"></table></div>
+          </div>
+
+          <div id="page-messages" class="page" hidden>
+            <div id="messages" class="problems"></div>
+          </div>
+
+          <div class="actions downloads">
+            <button type="button" class="btn" id="dlReport">Download listing (.lst)</button>
+            <span class="csv">
+              <select id="csvFormat" aria-label="CSV format">
+                <option value="PE">CSV: Point, Elevation</option>
+                <option value="PNEZD">CSV: PNEZD</option>
+                <option value="PNE">CSV: Point, N, E</option>
+              </select>
+              <button type="button" class="btn" id="dlCsv">Download CSV</button>
+            </span>
+            <button type="button" class="btn" id="editData">Edit data</button>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <footer class="wrap foot">

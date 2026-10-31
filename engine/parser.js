@@ -85,11 +85,11 @@ const OPTION_HANDLERS = {
 // Inline options may be abbreviated or spelled out.
 const OPTION_ALIASES = { REFRACTION: 'REF', ADDCENTERING: 'ADDC' };
 
-function initialState() {
+function initialState(setStart = 0) {
   return {
     units: [], order: 'NE', angleOrder: 'ATFROMTO', dimension: 2, level: null,
     curve: true, refraction: null, delta: false, edm: null, addCentering: false,
-    openSet: null, setCount: 0,    // direction-set bookkeeping (DB ... DE)
+    openSet: null, setCount: setStart,    // direction-set bookkeeping (DB ... DE)
   };
 }
 
@@ -430,14 +430,19 @@ export const RECORD_PARSERS = {
 
 /**
  * @param {string} text   contents of the .dat file (LF or CRLF)
- * @param {object} [opts] { fileIndex: 1 }   file number used in File:Line labels
+ * @param {object} [opts]
+ *   fileIndex      file number used in File:Line labels (default 1)
+ *   setStart       direction sets are numbered from setStart + 1, so several files never share a number
+ *   collectErrors  keep reading after a bad line and list every error in `errors` (the editor's
+ *                  "check" uses this, like STAR*NET's error file); by default the first bad line throws
  */
 export function parseDat(text, opts = {}) {
   const fileIndex = opts.fileIndex || 1;
-  const state = initialState();
+  const state = initialState(opts.setStart || 0);
   const options = [];
   const records = [];
   const warnings = [];
+  const errors = [];
   const lines = String(text).replace(/^﻿/, '').split(/\r\n|\n|\r/);
 
   for (let i = 0; i < lines.length; i++) {
@@ -469,7 +474,14 @@ export function parseDat(text, opts = {}) {
       records.push({ type: 'unsupported', code, tokens: tokens.slice(1), line, file: fileIndex });
       continue;
     }
-    const rec = parser(tokens.slice(1), ctx);
+    let rec;
+    try {
+      rec = parser(tokens.slice(1), ctx);
+    } catch (err) {
+      if (!opts.collectErrors || !(err instanceof DatParseError)) throw err;
+      errors.push({ line, file: fileIndex, message: err.message.replace(/^Line \d+: /, '') });
+      continue;
+    }
     rec.line = line;
     rec.file = fileIndex;
     // Snapshot of the inline options in force here: .REF, .CURVE, .EDM and .ADDC can change
@@ -480,5 +492,6 @@ export function parseDat(text, opts = {}) {
   if (state.openSet) {
     warnings.push({ line: state.openSet.line, message: `Direction set ${state.openSet.id} at ${state.openSet.at} was never closed with DE` });
   }
-  return { options, state, records, warnings };
+  for (const w of warnings) w.file = fileIndex;
+  return { options, state, records, warnings, errors };
 }

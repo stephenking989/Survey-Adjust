@@ -44,7 +44,9 @@ test('every engine and app file is in the precache list (so offline never breaks
   for (const f of fs.readdirSync(path.join(root, 'engine')).filter((n) => n.endsWith('.js'))) {
     assert.ok(sw.includes(`./engine/${f}`), `engine/${f} is not precached`);
   }
-  for (const f of ['index.html', 'style.css', 'app.js', 'manifest.json', 'icon.svg']) {
+  const appFiles = fs.readdirSync(path.join(root, 'app')).filter((n) => /\.(js|html|css|json|svg)$/.test(n));
+  assert.ok(appFiles.length >= 8);
+  for (const f of appFiles) {
     assert.ok(sw.includes(`./app/${f}`), `app/${f} is not precached`);
   }
 });
@@ -76,5 +78,23 @@ test('no committed fixture carries a student number, instrument serial number or
     assert.ok(!/\bW\d{7}\b/.test(text), `${f} contains a student number`);
     assert.ok(!/s\/n\s*\d{5,}/i.test(text), `${f} contains an instrument serial number`);
     assert.ok(!/crew\s*\d/i.test(text), `${f} contains a crew tag`);
+  }
+});
+
+test('every relative import in the app resolves to a real file', () => {
+  for (const f of fs.readdirSync(path.join(root, 'app')).filter((n) => n.endsWith('.js'))) {
+    for (const m of read(`app/${f}`).matchAll(/from\s+'(\.[^']+)'/g)) {
+      assert.ok(exists(path.posix.normalize(`app/${m[1]}`)), `app/${f} imports ${m[1]}, which does not exist`);
+    }
+  }
+});
+
+test('every element id the app code looks up exists in the page', () => {
+  const html = read('app/index.html');
+  const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  for (const f of ['app.js', 'editor.js', 'results.js']) {
+    for (const m of read(`app/${f}`).matchAll(/\$\('([^']+)'\)/g)) {
+      assert.ok(ids.has(m[1]), `app/${f} looks up #${m[1]}, which is not in index.html`);
+    }
   }
 });

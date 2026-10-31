@@ -4,7 +4,7 @@
 // Bump this string every time you deploy new code. The activate handler deletes
 // any cache with a different name, forcing browsers and installed PWAs to
 // discard stale files and re-fetch everything. (Same convention as FieldBook.)
-const CACHE_NAME = 'survey-adjust-v0.2.1';
+const CACHE_NAME = 'survey-adjust-v0.3.0';
 
 const APP_SHELL = [
   './',
@@ -13,6 +13,9 @@ const APP_SHELL = [
   './app/index.html',
   './app/style.css',
   './app/app.js',
+  './app/store.js',
+  './app/editor.js',
+  './app/results.js',
   './app/manifest.json',
   './app/icon.svg',
   './engine/index.js',
@@ -25,6 +28,8 @@ const APP_SHELL = [
   './engine/approx.js',
   './engine/report3d.js',
   './engine/version.js',
+  './engine/files.js',
+  './engine/advice.js',
   './engine/report.js',
   './app/samples/3D_SAMPLE.dat',
   './tests/fixtures/LEVEL_JOB.dat',

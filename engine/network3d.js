@@ -158,14 +158,14 @@ export function adjustNetwork3D(parsed, settings) {
   for (const r of parsed.records) {
     if (r.type !== 'C') continue;
     if (r.elevation === undefined) {
-      throw new AdjustmentError(`Line ${r.line}: C record for ${r.name} has no elevation (add .3D to the data file)`);
+      throw new AdjustmentError(`Line ${r.line}: C record for ${r.name} has no elevation (add .3D to the data file)`, { file: r.file, line: r.line });
     }
-    if (stations.has(r.name)) warnings.push({ line: r.line, message: `Station ${r.name} entered again; the later value is used` });
+    if (stations.has(r.name)) warnings.push({ file: r.file, line: r.line, message: `Station ${r.name} entered again; the later value is used` });
     stations.set(r.name, {
       name: r.name, n: r.north, e: r.east, z: r.elevation,
       status: [r.status.north, r.status.east, r.status.elevation],
       stdErr: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation],
-      description: r.description, line: r.line, used: false,
+      description: r.description, line: r.line, file: r.file, used: false,
       input: { n: r.north, e: r.east, z: r.elevation, sd: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation] },
     });
   }
@@ -179,9 +179,9 @@ export function adjustNetwork3D(parsed, settings) {
   } catch (err) {
     throw new AdjustmentError(err.message);
   }
-  const sta = (name, line) => {
+  const sta = (name, rec) => {
     const s = stations.get(name);
-    if (!s) throw new AdjustmentError(`Line ${line}: station ${name} has no coordinates (add a C record, free is fine: C ${name} N E Z * * *)`);
+    if (!s) throw new AdjustmentError(`Line ${rec.line}: station ${name} has no coordinates (add a C record, free is fine: C ${name} N E Z * * *)`, { file: rec.file, line: rec.line });
     s.used = true;
     return s;
   };
@@ -196,11 +196,11 @@ export function adjustNetwork3D(parsed, settings) {
   const fixedLin = settings.fixedStdErr;              // metres
 
   const pushDist = (r, from, to, distance, errGiven) => {
-    const A = sta(from, r.line); const B = sta(to, r.line);
+    const A = sta(from, r); const B = sta(to, r);
     obs.push({ kind: 'dist', rec: r, A, B, hi: r.hi || 0, ht: r.ht || 0, value: distance, errGiven, line: r.line, file: r.file });
   };
   const pushZen = (r, from, to, zenithDeg, errGiven) => {
-    const A = sta(from, r.line); const B = sta(to, r.line);
+    const A = sta(from, r); const B = sta(to, r);
     obs.push({ kind: 'zen', rec: r, A, B, hi: r.hi || 0, ht: r.ht || 0, value: zenithDeg * DEG, errGiven, line: r.line, file: r.file });
   };
 
@@ -208,7 +208,7 @@ export function adjustNetwork3D(parsed, settings) {
     switch (r.type) {
       case 'DM': case 'DN': {
         const set = addSet(r); set.count++;
-        const A = sta(r.at, r.line); const B = sta(r.to, r.line);
+        const A = sta(r.at, r); const B = sta(r.to, r);
         obs.push({ kind: 'dir', rec: r, A, B, set, hi: r.hi || 0, ht: r.ht || 0, value: r.direction * DEG, errGiven: r.stdErr.direction, line: r.line, file: r.file });
         if (r.type === 'DM') {
           pushDist(r, r.at, r.to, r.distance, r.stdErr.distance);
@@ -220,7 +220,7 @@ export function adjustNetwork3D(parsed, settings) {
       case 'D': pushDist(r, r.from, r.to, r.distance, r.stdErr.distance); break;
       case 'V': pushZen(r, r.from, r.to, r.zenith, r.stdErr.zenith); break;
       case 'A': case 'M': {
-        const At = sta(r.at, r.line); const F = sta(r.from, r.line); const T = sta(r.to, r.line);
+        const At = sta(r.at, r); const F = sta(r.from, r); const T = sta(r.to, r);
         obs.push({ kind: 'ang', rec: r, A: At, F, B: T, value: r.angle * DEG, errGiven: r.stdErr.angle, line: r.line, file: r.file });
         if (r.type === 'M') {
           pushDist(r, r.at, r.to, r.distance, r.stdErr.distance);
@@ -229,7 +229,7 @@ export function adjustNetwork3D(parsed, settings) {
         break;
       }
       case 'B': {
-        const A = sta(r.from, r.line); const B = sta(r.to, r.line);
+        const A = sta(r.from, r); const B = sta(r.to, r);
         obs.push({ kind: 'az', rec: r, A, B, value: r.azimuth * DEG, errGiven: r.stdErr.azimuth, line: r.line, file: r.file });
         break;
       }
@@ -284,7 +284,7 @@ export function adjustNetwork3D(parsed, settings) {
   const coordObs = [];
   for (const s of used) {
     s.status.forEach((st, i) => {
-      if (st === 'weighted') coordObs.push({ kind: 'coord', station: s, comp: i, value: [s.n, s.e, s.z][i], sigma: s.stdErr[i], param: pidx.get(s)[i], line: s.line });
+      if (st === 'weighted') coordObs.push({ kind: 'coord', station: s, comp: i, value: [s.n, s.e, s.z][i], sigma: s.stdErr[i], param: pidx.get(s)[i], line: s.line, file: s.file });
     });
   }
 
@@ -441,7 +441,7 @@ export function adjustNetwork3D(parsed, settings) {
     const v = get(c.station, c.comp) - c.value;
     const stdRes = v / c.sigma;
     account('coord', stdRes);
-    return { name: c.station.name, component: COMP_NAME[c.comp], observed: c.value, adjusted: get(c.station, c.comp), residual: v, sigma: c.sigma, stdRes, flagged: Math.abs(stdRes) > flag, line: c.line };
+    return { name: c.station.name, component: COMP_NAME[c.comp], observed: c.value, adjusted: get(c.station, c.comp), residual: v, sigma: c.sigma, stdRes, flagged: Math.abs(stdRes) > flag, line: c.line, file: c.file };
   });
 
   const nObs = obs.length + coordObs.length;
