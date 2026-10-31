@@ -162,3 +162,13 @@ test('a zenith makes the job 3D (which then needs elevations, and says where); a
   assert.equal(chk.ok, false);
   assert.match(chk.errors[0].message, /fixed bearing/);
 });
+
+test('a fixed bearing and a distance place the station at the far end, in either direction', () => {
+  const near1 = (s, name) => s.result.stations.find((x) => x.name === name);
+  // Known station 1; 2 lies 100 m due east (azimuth 90); 3 is placed from 2 by an angle and a distance.
+  const fwd = run(['C 1 1000 2000 ! !', 'B 1-2 90-00-00 !', 'D 1-2 100.000', 'M 2-1-3 090-00-00 50.000', 'D 1-3 111.8034', 'D 2-3 50.00'].join('\n'));
+  near(assert, near1(fwd, '2').n, 1000, 1e-4); near(assert, near1(fwd, '2').e, 2100, 1e-4);
+  // The same bearing written from 2 to 1 (azimuth 270), with 1 unknown and 2 known.
+  const back = run(['C 2 1000 2100 ! !', 'B 2-1 270-00-00 !', 'D 1-2 100.000'].join('\n'));
+  near(assert, near1(back, '1').n, 1000, 1e-4); near(assert, near1(back, '1').e, 2000, 1e-4);
+});
