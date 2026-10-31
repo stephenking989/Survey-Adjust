@@ -10,7 +10,7 @@ const run = (dat, over) => adjustLevelling(parseDat(dat), settings(over));
 
 test('two equal-weight runs A->B: adjusted B is the mean, both residuals are minus half the misclosure', () => {
   // 1 km each, sigma = 0.001 m. Runs disagree by 0.002.
-  const r = run('E A 100 !\nL A-B 1.002 1000\nL B-A -1.000 1000\n');
+  const r = run('E A 100 !\nL A-B 1.002 1000\nL B-A -1.000 1000\n', { errorScaling: 'always' });
   const B = r.stations.find((s) => s.name === 'B');
   near(assert, B.elevation, 101.001, 1e-9);
   near(assert, r.observations[0].residual, -0.001, 1e-9);
@@ -24,10 +24,15 @@ test('two equal-weight runs A->B: adjusted B is the mean, both residuals are min
   near(assert, B.stdDev, 0.001, 1e-9);
 });
 
-test('scaleByErrorFactor=false gives pure a-priori propagation', () => {
-  const r = run('E A 100 !\nL A-B 1.002 1000\nL B-A -1.000 1000\n', { scaleByErrorFactor: false });
+test("errorScaling 'never' gives pure a-priori propagation; 'auto' leaves a passing test unscaled", () => {
+  const r = run('E A 100 !\nL A-B 1.002 1000\nL B-A -1.000 1000\n', { errorScaling: 'never' });
   near(assert, r.stations.find((s) => s.name === 'B').stdDev, 0.001 / Math.SQRT2, 1e-9);
   assert.equal(r.stats.errorFactorApplied, 1);
+  // Error factor 1.41 is inside the 5% chi-square bounds for 1 dof, so STAR*NET's rule does not scale.
+  const auto = run('E A 100 !\nL A-B 1.002 1000\nL B-A -1.000 1000\n');
+  assert.equal(auto.stats.chiSquare.passed, true);
+  assert.equal(auto.stats.errorFactorApplied, 1);
+  near(assert, auto.stations.find((s) => s.name === 'B').stdDev, 0.001 / Math.SQRT2, 1e-9);
 });
 
 test('weights follow sigma^2 = c^2 * length(km): a short run outweighs a long one', () => {

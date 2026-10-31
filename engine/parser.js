@@ -73,14 +73,22 @@ const OPTION_HANDLERS = {
   '3D'(state) { state.dimension = 3; },
   LEVEL(state, args) { state.level = { stdErr: Number(args[0]), mode: (args[1] || 'LENGTH').toUpperCase() }; },
   CURVE(state, args) { state.curve = onOff(args, true); },
-  REF(state, args) { state.refraction = Number(args[0]); },
+  // .REF with no value returns to the project default (null).
+  REF(state, args) { state.refraction = args.length ? Number(args[0]) : null; },
   DELTA(state, args) { state.delta = onOff(args, true); },
+  // .EDM P / PROPAGATED or .EDM A / ADDITIVE (the default).
+  EDM(state, args) { state.edm = /^p/i.test(args[0] || '') ? 'propagated' : 'additive'; },
+  // Explicit std errors are normally used as given; ON makes centering inflate them too.
+  ADDC(state, args) { state.addCentering = onOff(args, true); },
 };
+
+// Inline options may be abbreviated or spelled out.
+const OPTION_ALIASES = { REFRACTION: 'REF', ADDCENTERING: 'ADDC' };
 
 function initialState() {
   return {
     units: [], order: 'NE', angleOrder: 'ATFROMTO', dimension: 2, level: null,
-    curve: true, refraction: null, delta: false,
+    curve: true, refraction: null, delta: false, edm: null, addCentering: false,
     openSet: null, setCount: 0,    // direction-set bookkeeping (DB ... DE)
   };
 }
@@ -444,7 +452,8 @@ export function parseDat(text, opts = {}) {
       if (name === 'END') break;
       const args = tokens.slice(1);
       options.push({ name, args, line });
-      if (OPTION_HANDLERS[name]) OPTION_HANDLERS[name](state, args);
+      const handler = OPTION_HANDLERS[OPTION_ALIASES[name] || name];
+      if (handler) handler(state, args);
       continue;
     }
 
@@ -463,6 +472,9 @@ export function parseDat(text, opts = {}) {
     const rec = parser(tokens.slice(1), ctx);
     rec.line = line;
     rec.file = fileIndex;
+    // Snapshot of the inline options in force here: .REF, .CURVE, .EDM and .ADDC can change
+    // part-way through a file, and each observation must use the setting on its own line.
+    rec.inline = { curve: state.curve, refraction: state.refraction, edm: state.edm, addCentering: state.addCentering };
     records.push(rec);
   }
   if (state.openSet) {

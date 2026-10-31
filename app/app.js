@@ -29,7 +29,7 @@ function loadSettings() {
     if (Number.isFinite(s.levelStdErr)) el.levelStdErr.value = s.levelStdErr;
     if (Number.isFinite(s.chiSquarePercent)) el.chiPercent.value = s.chiSquarePercent;
     if (Number.isFinite(s.stdResFlag)) el.stdResFlag.value = s.stdResFlag;
-    if (typeof s.scaleByErrorFactor === 'boolean') el.scaleFactor.checked = s.scaleByErrorFactor;
+    if (typeof s.errorScaling === 'string') el.scaleFactor.checked = s.errorScaling !== 'never';
   } catch { /* storage blocked or corrupt: fall back to defaults */ }
 }
 function saveSettings(s) {
@@ -41,7 +41,7 @@ function readSettings() {
   s.levelStdErr = Number(el.levelStdErr.value);
   s.chiSquarePercent = Number(el.chiPercent.value);
   s.stdResFlag = Number(el.stdResFlag.value);
-  s.scaleByErrorFactor = el.scaleFactor.checked;
+  s.errorScaling = el.scaleFactor.checked ? 'auto' : 'never';
   s.projectName = job.name || s.projectName;
   return s;
 }

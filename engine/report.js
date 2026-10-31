@@ -52,7 +52,7 @@ export function buildReport(result, opts = {}) {
   push(`      Project Units                       : ${u}`);
   push(`      Input/Output Coordinate Order       : ${order}`);
   push(`      Chi-Square Test Significance        : ${f(settings.chiSquarePercent, 2)}%`);
-  push(`      Std Devs Scaled by Error Factor     : ${settings.scaleByErrorFactor ? 'Yes' : 'No'}`);
+  push(`      Std Devs Scaled by Error Factor     : ${stats.errorFactorApplied !== 1 ? 'Yes (chi-square test failed)' : 'No'}`);
   push();
   push(center('Instrument Standard Error Settings'));
   push();
@@ -134,7 +134,7 @@ export function buildReport(result, opts = {}) {
 
   // ---- Adjusted elevations ----------------------------------------------
   heading(`Adjusted Elevations and Error Propagation (${u})`);
-  if (settings.scaleByErrorFactor && stats.dof > 0) {
+  if (stats.errorFactorApplied !== 1 && stats.dof > 0) {
     push(`Std deviations are scaled by the Total Error Factor (${f(stats.errorFactor, 3)}).`);
     push();
   }

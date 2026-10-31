@@ -21,6 +21,7 @@ const APP_SHELL = [
   './engine/parser.js',
   './engine/project.js',
   './engine/level.js',
+  './engine/network3d.js',
   './engine/report.js',
   './tests/fixtures/LEVEL_JOB.dat',
 ];
