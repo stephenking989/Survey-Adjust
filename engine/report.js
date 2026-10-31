@@ -5,8 +5,8 @@
 // threshold) or null, so a UI can colour lines without re-parsing the text.
 // Pure function: pass `runDate` if you need a reproducible listing.
 
-export const ENGINE_NAME = 'Survey-Adjust';
-export const ENGINE_VERSION = '0.1.0';
+import { ENGINE_NAME, ENGINE_VERSION } from './version.js';
+export { ENGINE_NAME, ENGINE_VERSION };
 
 const WIDTH = 80;
 const LIST_DECIMALS = 4;   // the .lst prints elevations to 4 places

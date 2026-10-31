@@ -158,6 +158,7 @@ export function adjustNetwork3D(parsed, settings) {
       status: [r.status.north, r.status.east, r.status.elevation],
       stdErr: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation],
       description: r.description, line: r.line, used: false,
+      input: { n: r.north, e: r.east, z: r.elevation, sd: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation] },
     });
   }
   const sta = (name, line) => {
@@ -233,6 +234,7 @@ export function adjustNetwork3D(parsed, settings) {
     const inl = o.rec.inline || {};
     const kk = Number.isFinite(inl.refraction) ? inl.refraction : kDefault;
     o.q = inl.curve === false ? 0 : (0.5 - kk) / R;
+    o.refractionUsed = inl.curve === false ? 0 : kk;
     o.edm = inl.edm || ins.edmMethod;
     o.addCentering = Boolean(inl.addCentering);
   }
@@ -407,6 +409,7 @@ export function adjustNetwork3D(parsed, settings) {
       kind: o.kind, from: o.A.name, to: o.B.name, via: o.F ? o.F.name : null, set: o.set ? o.set.id : null,
       observed: o.value, adjusted: o.value + v, residual: v, sigma: o.sigma, sigmaModel: o.sigmaModel, errGiven: o.errGiven,
       stdRes, flagged: Math.abs(stdRes) > flag, line: o.line, file: o.file, hi: o.hi, ht: o.ht,
+      refraction: o.refractionUsed, slope: geom(o.A, o.B, o.hi, o.ht).S, horizontal: geom(o.A, o.B, o.hi, o.ht).Dh,
     });
   }
   const resultCoordObs = coordObs.map((c) => {
@@ -427,7 +430,7 @@ export function adjustNetwork3D(parsed, settings) {
   const outStations = used.map((s) => {
     const p = pidx.get(s);
     const std = p.map((j, i) => (j >= 0 ? Math.sqrt(Qxx.get(j, j)) * scale : settings.fixedStdErr * scale));
-    return { name: s.name, n: s.n, e: s.e, z: s.z, status: s.status.slice(), stdDev: std, description: s.description };
+    return { name: s.name, n: s.n, e: s.e, z: s.z, status: s.status.slice(), stdDev: std, description: s.description, input: s.input };
   });
 
   return {
