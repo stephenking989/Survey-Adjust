@@ -116,3 +116,7 @@ summary { cursor: pointer; padding: 8px 0; color: var(--accent); font-weight: 60
 .foot { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
 
 @media (max-width: 420px) { .row { flex-direction: column; gap: 0; } .actions .btn, .csv, .csv select { width: 100%; } }
+
+h3 { margin: 12px 0 0; font-size: .95rem; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 12px; }
+@media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }

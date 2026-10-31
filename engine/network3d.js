@@ -175,7 +175,7 @@ export function adjustNetwork3D(parsed, settings) {
       name, n, e, z, status: ['free', 'free', 'free'], stdErr: [null, null, null], description: '', line: 0, used: false,
       input: { n, e, z, sd: [null, null, null] }, approximate: true,
     }));
-    for (const name of added) warnings.push({ line: null, message: `Station ${name} has no C record; starting coordinates were computed from the observations` });
+    for (const name of added) warnings.push({ line: null, note: true, message: `Station ${name} has no C record; starting coordinates were computed from the observations` });
   } catch (err) {
     throw new AdjustmentError(err.message);
   }
