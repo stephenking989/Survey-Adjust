@@ -63,7 +63,7 @@ export function buildReport(result, opts = {}) {
   // ---- Warnings from the parser/engine ----------------------------------
   if (result.warnings.length) {
     heading('Warnings');
-    for (const w of result.warnings) push(`      Line ${w.line}: ${w.message}`, 'warn');
+    for (const w of result.warnings) push(`      ${w.line ? `Line ${w.line}: ` : ''}${w.message}`, 'warn');
     push();
   }
 

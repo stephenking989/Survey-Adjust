@@ -22,6 +22,7 @@ const APP_SHELL = [
   './engine/project.js',
   './engine/level.js',
   './engine/network3d.js',
+  './engine/approx.js',
   './engine/report3d.js',
   './engine/version.js',
   './engine/report.js',

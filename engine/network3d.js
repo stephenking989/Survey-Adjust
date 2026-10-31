@@ -45,6 +45,7 @@
 import { Matrix, cholesky, choleskySolve, inverseSPD, SingularMatrixError } from './matrix.js';
 import { chiSquareTest, normalQuantile, propagationScale } from './stats.js';
 import { AdjustmentError } from './level.js';
+import { approximateStations } from './approx.js';
 
 export const RHO = 206264.80624709636;          // arc-seconds per radian
 const DEG = Math.PI / 180;
@@ -139,6 +140,13 @@ export function partialsZenith(g, q) {
 const COMP = ['n', 'e', 'z'];
 const COMP_NAME = ['N', 'E', 'Elev'];
 
+/** Number of direction observations in each set. */
+function setList0(obs) {
+  const n = new Map();
+  for (const o of obs) if (o.kind === 'dir') n.set(o.set.id, (n.get(o.set.id) || 0) + 1);
+  return [...n.values()];
+}
+
 export function adjustNetwork3D(parsed, settings) {
   const warnings = parsed.warnings.map((w) => ({ ...w }));
   const ins = { ...settings.instrument, edmMethod: parsed.state.edm || settings.instrument.edmMethod };
@@ -160,6 +168,16 @@ export function adjustNetwork3D(parsed, settings) {
       description: r.description, line: r.line, used: false,
       input: { n: r.north, e: r.east, z: r.elevation, sd: [r.stdErr.north, r.stdErr.east, r.stdErr.elevation] },
     });
+  }
+  // Stations with no C record get starting coordinates from the observations.
+  try {
+    const added = approximateStations(parsed, stations, (name, n, e, z) => ({
+      name, n, e, z, status: ['free', 'free', 'free'], stdErr: [null, null, null], description: '', line: 0, used: false,
+      input: { n, e, z, sd: [null, null, null] }, approximate: true,
+    }));
+    for (const name of added) warnings.push({ line: null, message: `Station ${name} has no C record; starting coordinates were computed from the observations` });
+  } catch (err) {
+    throw new AdjustmentError(err.message);
   }
   const sta = (name, line) => {
     const s = stations.get(name);
@@ -237,6 +255,13 @@ export function adjustNetwork3D(parsed, settings) {
     o.refractionUsed = inl.curve === false ? 0 : kk;
     o.edm = inl.edm || ins.edmMethod;
     o.addCentering = Boolean(inl.addCentering);
+  }
+
+  // Instrument centering error makes the directions of one set statistically dependent
+  // (they all share the same instrument offset). STAR*NET accounts for this; we do not
+  // yet, so say so rather than silently differ slightly.
+  if (ins.centeringInstrument > 0 && setList0(obs).some((n) => n >= 2)) {
+    warnings.push({ line: null, message: 'Instrument centering error is set: the correlation it causes between directions of the same set is not modelled yet, so results differ slightly from STAR*NET' });
   }
 
   // ---- 3. Parameters -------------------------------------------------------

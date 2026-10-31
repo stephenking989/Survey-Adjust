@@ -187,7 +187,7 @@ test('an explicit std error is used as given; .ADDCENTERING inflates it', () => 
 
 test('a station without coordinates is reported by name and line', () => {
   const dat = 'C A 1000 1000 100 ! ! !\n.3D\nDB A\nDM Q 000-00-00 50 090-00-00\nDE\n';
-  assert.throws(() => adjustNetwork3D(parseDat('.3D\n' + dat), settings()), (e) => e instanceof AdjustmentError && /station Q has no coordinates/.test(e.message));
+  assert.throws(() => adjustNetwork3D(parseDat('.3D\n' + dat), settings()), (e) => e instanceof AdjustmentError && /approximate coordinates for Q/.test(e.message));
 });
 
 test('a network with nothing fixed or weighted cannot be solved', () => {
