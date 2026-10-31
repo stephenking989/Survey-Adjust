@@ -15,9 +15,10 @@ No build step, no frameworks, no runtime dependencies. Plain JavaScript ES modul
 | 0.3 | Projects like STAR*NET's: several data files with include checkboxes and a reading order, an in-page editor for each file, Check data, a results page, and plain-language help when the chi-square test fails |
 | 0.4 | Error ellipses and a network plot (3D jobs): station and relative ellipses in the listing, matching STAR*NET's listings for both test jobs, and a pan-and-zoom plot with names, observation lines and ellipses |
 | 0.5 | 2D networks: horizontal angles, directions, distances and azimuths with no heights or zeniths, and traverse data (`TB` / `T` / `TE`). Same listing, ellipses and plot as 3D, without the elevation parts. **Not yet checked against a real STAR*NET 2D listing** (see below) |
-| **0.6 (now)** | **Leica GSI import** (GSI8 and GSI16): add a `.gsi` file and it is converted to a `.dat` you can edit. **Digital level files** (Leica DNA) are converted to levelling data and have been run on eight real files; **total-station files** are written from Leica's format guide and tested on generated files only |
+| 0.6 | **Leica GSI import** (GSI8 and GSI16): add a `.gsi` file and it is converted to a `.dat` you can edit. **Digital level files** (Leica DNA) are converted to levelling data and have been run on eight real files; **total-station files** are written from Leica's format guide and tested on generated files only |
+| **0.7 (now)** | **Carlson RW5 import**: a SurvCE raw file with traverse and sideshot records becomes a 2D `.dat` (angle-right, angle-left, deflection and bearing shots, slope distances reduced to horizontal, closing shots renamed to the point they close on). **Run on four real traverse files and tested on invented data; written from Carlson's format specification** |
 | Next | Direction correlation from instrument centering, 3D-format data in a 2D job, traverses that start from a bearing |
-| Later | Importers: Trimble JobXML, Carlson RW5 |
+| Later | Importers: Trimble JobXML |
 | Later | Grid / NAD83(CSRS) support |
 
 ## Using it
@@ -62,6 +63,12 @@ Add the app to your home screen (or install it from the browser menu) and it wor
 | A code written against a numeric station name (`C1 5000 5000`, `T2 90-00-00 100`) | read as `C 1 ...` and `T 2 ...`, as the manual's own examples are written |
 | Leica `.gsi` (GSI8 / GSI16) | converted to a `.dat` on import, see below |
 | Anything else (`G`, ...) | kept as "unsupported" with a warning |
+
+### Carlson RW5 import
+
+Add a `.rw5` file (Carlson SurvCE raw data) and it becomes a 2D `.dat`. The record layout follows Carlson's *SurvCE Raw Data File Format 3.03*: comma-separated records, two-character field headers, `SP`/`OC` for points with coordinates, `BK` for a backsight, and `TR` (traverse shot) and `SS` (sideshot) with an angle (`AR` right, `AL` left, `DR`/`DL` deflection, `AZ`/`BR` azimuth or bearing), a vertical value (`ZE`, `VA`) and a distance (`SD` or `HD`). Each shot becomes `M at-from-to angle distance` (angle right, measured from the back point); a shot on an azimuth or bearing becomes a fixed `B` and a `D`. Slope distances are reduced to horizontal with the zenith (distance times sin zenith) or the vertical angle (times cos), and elevations are not used.
+
+Things the specification does not cover, which the converter handles by a rule of its own (and reports): `CL` and `AB` records (which appear in files made for Carlson's traverse routines) are read as a traverse shot and a sideshot; the collector gives the closing shot a new point name, so the last traverse shot, any `CL`, and an `AB` are renamed to a known point, or an earlier computed point, that they land within 0.5 units of; the scale factor is not applied; angle sets (`BD`, `BR`, `FD`, `FR`), off-centre shots and GNSS records are skipped with a warning. It was run on four real traverse files from a course (a loop starting on a bearing, a link traverse, its reverse, and a six-shot link) and all convert and adjust; the tests use invented traverses generated from known points, so the converted data adjusts back to the true coordinates.
 
 ### Leica GSI import
 

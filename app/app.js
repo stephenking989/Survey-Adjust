@@ -2,7 +2,7 @@
 // a project of several data files (Data tab, with an in-page editor), the project options
 // (Options tab) and the results pages (Results tab).
 import {
-  runAdjustment, checkData, parseDataFiles, detectKind, gsiToDat, looksLikeGsi, GsiError, defaultSettings, settingsFromSnproj, dataFileNamesFromSnproj,
+  runAdjustment, checkData, parseDataFiles, detectKind, gsiToDat, looksLikeGsi, GsiError, rw5ToDat, looksLikeRw5, Rw5Error, defaultSettings, settingsFromSnproj, dataFileNamesFromSnproj,
   LINEAR_UNITS, linearUnitsFromDat, AdjustmentError, DataFileError, ENGINE_VERSION,
 } from '../engine/index.js';
 import * as store from './store.js';
@@ -14,7 +14,7 @@ const el = {
   tabs: [...document.querySelectorAll('.tab')], resultsDot: $('resultsDot'),
   viewData: $('view-data'), viewEditor: $('view-editor'), viewOptions: $('view-options'), viewResults: $('view-results'),
   projectName: $('projectName'), fileList: $('fileList'), fileEmpty: $('fileEmpty'), addInput: $('addInput'), newFileBtn: $('newFileBtn'),
-  sampleBtn: $('sampleBtn'), sampleGsiBtn: $('sampleGsiBtn'), sampleLevelGsiBtn: $('sampleLevelGsiBtn'), gsiCoords: $('gsiCoords'), gsiVertical: $('gsiVertical'), gsiStation: $('gsiStation'), sample2dBtn: $('sample2dBtn'), sample3dBtn: $('sample3dBtn'), addNote: $('addNote'),
+  sampleBtn: $('sampleBtn'), sampleGsiBtn: $('sampleGsiBtn'), sampleLevelGsiBtn: $('sampleLevelGsiBtn'), sampleRw5Btn: $('sampleRw5Btn'), gsiCoords: $('gsiCoords'), gsiVertical: $('gsiVertical'), gsiStation: $('gsiStation'), sample2dBtn: $('sample2dBtn'), sample3dBtn: $('sample3dBtn'), addNote: $('addNote'),
   kindInfo: $('kindInfo'), checkBtn: $('checkBtn'), adjustBtn: $('adjustBtn'), problems: $('problems'),
   edCheck: $('edCheck'), edAdjust: $('edAdjust'), edProblems: $('edProblems'),
   snprojInput: $('snprojInput'), optInfo: $('optInfo'), resetOpts: $('resetOpts'), optError: $('optError'),
@@ -121,29 +121,37 @@ function projectStationNames() {
   return names;
 }
 
-/** Convert one Leica GSI file and add the .dat; returns the note to show, and pushes warnings for the problems list. */
+/** True for the field-file formats that are converted on the way in (Leica GSI, Carlson RW5). */
+const isFieldFile = (name, text) => /\.(gsi|rw5)$/i.test(name) || looksLikeGsi(text) || looksLikeRw5(text);
+
+/** Convert one Leica GSI or Carlson RW5 file and add the .dat; returns the note to show, and pushes warnings for the problems list. */
 function importGsi(name, text, warnings) {
+  const rw5 = /\.rw5$/i.test(name) || (!/\.gsi$/i.test(name) && !looksLikeGsi(text) && looksLikeRw5(text));
   try {
     const opts = { coords: el.gsiCoords.value, vertical: el.gsiVertical.value, station: el.gsiStation.value.trim() || undefined };
-    let r = gsiToDat(text, opts);
+    const convert = (o) => (rw5 ? rw5ToDat(text, o) : gsiToDat(text, o));
+    let r = convert(opts);
     // Instruments number points from 1 in every job, so a second file would silently join the first one's points.
     let prefixed = '';
     const existing = projectStationNames();
     if (existing.size && r.summary.stations.some((n) => existing.has(n))) {
       prefixed = `F${store.getState().files.length + 1}_`;
-      r = gsiToDat(text, { ...opts, prefix: prefixed });
+      r = convert({ ...opts, prefix: prefixed });
     }
     const datName = name.replace(/\.[^.]*$/, '') + '.dat';
     store.addFile(datName, r.text);
     if (prefixed) warnings.push({ severity: 'warning', message: `${name}: some point names (such as ${r.summary.stations.find((n) => existing.has(n.slice(prefixed.length))) || 'the first ones'}) are already used by another file in the project, so every point in this file was given the prefix ${prefixed} to keep the files apart. Rename them in the .dat if some points really are shared.` });
-    for (const w of r.warnings) warnings.push({ severity: 'warning', message: `${name}${w.line ? `, GSI line ${w.line}` : ''}: ${w.message}` });
+    for (const w of r.warnings) warnings.push({ severity: 'warning', message: `${name}${w.line ? `, ${rw5 ? 'line' : 'GSI line'} ${w.line}` : ''}: ${w.message}` });
     const s = r.summary;
+    if (s.kind === 'rw5') {
+      return `Converted ${name} to ${datName}: 2D traverse, ${s.traverseShots} traverse shot${s.traverseShots === 1 ? '' : 's'}, ${s.sideshots} sideshot${s.sideshots === 1 ? '' : 's'}${s.bearingLegs ? `, ${s.bearingLegs} on a fixed bearing` : ''}, ${s.controlPoints} control point${s.controlPoints === 1 ? '' : 's'}. Check the closing shots, then set the instrument on the Options tab.`;
+    }
     if (s.kind === 'level') {
       return `Converted ${name} to ${datName}: differential levelling, ${s.runs} run${s.runs === 1 ? '' : 's'}, ${s.setups} set-up${s.setups === 1 ? '' : 's'}, ${s.benchmarks} benchmark${s.benchmarks === 1 ? '' : 's'}. Set the level std error on the Options tab.`;
     }
     return `Converted ${name} to ${datName}: ${s.dimension}D, ${s.stations.length} station${s.stations.length === 1 ? '' : 's'}, ${s.sets} direction set${s.sets === 1 ? '' : 's'}, ${s.directionsWithDistance + s.directionsOnly} pointings${s.face2 ? ` (${s.face2} on face 2, reduced to face 1)` : ''}. Check the stations and heights, then set the instrument on the Options tab.`;
   } catch (err) {
-    if (!(err instanceof GsiError)) throw err;
+    if (!(err instanceof GsiError || err instanceof Rw5Error)) throw err;
     warnings.push({ severity: 'error', message: `${name}: ${err.message}` });
     return `${name} could not be converted.`;
   }
@@ -158,7 +166,7 @@ async function addFiles(fileList) {
   const warnings = [];
   for (const f of data) {
     const text = await f.text();
-    if (/\.gsi$/i.test(f.name) || looksLikeGsi(text)) {
+    if (isFieldFile(f.name, text)) {
       const note = importGsi(f.name, text, warnings);
       if (note) notes.push(note);
     } else {
@@ -230,6 +238,7 @@ el.sampleGsiBtn.addEventListener('click', () => loadGsiSample('./samples/GSI_SAM
   refraction: 0.07,
   instrument: { distanceConstant: 0.0007, distancePpm: 2, direction: 3, zenith: 3, angle: 4, azimuth: 4, centeringInstrument: 0, centeringTarget: 0, centeringVertical: 0 },
 }));
+el.sampleRw5Btn.addEventListener('click', () => loadGsiSample('./samples/RW5_SAMPLE.rw5', 'RW5_SAMPLE.rw5', { instrument: { distanceConstant: 0.005, distancePpm: 0, direction: 5, angle: 5, azimuth: 5, centeringInstrument: 0, centeringTarget: 0 } }));
 el.sampleLevelGsiBtn.addEventListener('click', () => loadGsiSample('./samples/LEVEL_GSI_SAMPLE.gsi', 'LEVEL_GSI_SAMPLE.gsi', { levelStdErr: 0.0004 }));
 el.sample2dBtn.addEventListener('click', () => loadSample('./samples/2D_TRAVERSE.dat', '2D_TRAVERSE.dat', {
   instrument: { distanceConstant: 0.02, distancePpm: 0, direction: 5, angle: 5, azimuth: 5, centeringInstrument: 0, centeringTarget: 0 },

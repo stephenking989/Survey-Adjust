@@ -19,6 +19,7 @@ export { parseDat, DatParseError, RECORD_PARSERS, parseAngle, parseBearing } fro
 export { parseDataFiles, DataFileError } from './files.js';
 export { adviseOnAdjustment, worstResiduals } from './advice.js';
 export { gsiToDat, readGsi, parseGsiLine, looksLikeGsi, GsiError } from './gsi.js';
+export { rw5ToDat, parseRw5Line, looksLikeRw5, Rw5Error } from './rw5.js';
 export { ellipseTables, stationEllipse, relativeEllipse, connectedPairs } from './ellipse.js';
 export { adjustLevelling, AdjustmentError } from './level.js';
 export { adjustNetwork3D, errorModel } from './network3d.js';
