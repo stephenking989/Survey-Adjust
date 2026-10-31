@@ -22,6 +22,12 @@
 // 81/82/83 target easting/northing/height, 84/85/86 station easting/northing/height, 87 reflector (target) height,
 // 88 instrument height.
 //
+// DIGITAL LEVELS (Leica DNA) use the same blocks with three-character word indices (331, 573 ...), written as three
+// digits followed by "." in position 4. Words seen in real level files and used here: 11 point id, 32 horizontal
+// distance, 331 back sight reading, 332 fore sight reading, 83 height, 509 and 512 start and end point of a line. Read
+// but only used as checks: 573/574 (running balances), 505-514 (the closure summary that ends a line). 41-49 code
+// blocks are ignored. A level run becomes L records (see levelToDat).
+//
 // WHAT IS NOT IN THE FORMAT: a GSI file does not say which pointing is a setup, a backsight or a repeat. Station lines
 // (those with WI 84-86 or WI 16) start a setup; observation lines belong to the current station. A direction set is a
 // run of pointings from one station in which no target repeats. Face 2 pointings (zenith over 180 degrees) are
@@ -38,7 +44,7 @@ const UNIT = {
   5: { kind: 'angle', per: 1e4, unit: 'mil' },
 };
 const ANGLE_WORDS = new Set(['21', '22', '25']);
-const DIST_WORDS = new Set(['31', '32', '33', '81', '82', '83', '84', '85', '86', '87', '88']);
+const DIST_WORDS = new Set(['31', '32', '33', '81', '82', '83', '84', '85', '86', '87', '88', '331', '332', '333', '573', '574', '505', '506', '507', '513', '514']);
 
 export class GsiError extends Error {
   constructor(message, line) {
@@ -54,21 +60,31 @@ export function looksLikeGsi(text) {
   return Boolean(first) && /^\*?\d{2}[.\d]{4}[+-][^\s]{8,16}(\s|$)/.test(first.trim());
 }
 
-/** Split one line into blocks { wi, info, unit, sign, data }. Throws GsiError on a malformed block. */
+/**
+ * Split one line into blocks { wi, info, unit, sign, data }. Blocks are fixed width (7 information characters plus 8 or
+ * 16 data characters, then one blank), because the data field can itself contain blanks ("Quick Closure").
+ * A word index is two characters, or three when the third is a digit and the fourth is a ".", as in "331.28".
+ * Throws GsiError on a malformed block.
+ */
 export function parseGsiLine(raw, lineNo) {
-  const line = raw.replace(/^\*/, '').replace(/\s+$/, '');
-  const tokens = line.split(/\s+/).filter(Boolean);
-  if (!tokens.length) return [];
-  // Block width comes from the first block: 7 information characters plus 8 or 16 data characters.
-  const dataLen = tokens[0].replace(/^\*/, '').length - 7;
-  if (dataLen !== 8 && dataLen !== 16) throw new GsiError(`the first block "${tokens[0]}" is not GSI8 (15 characters) or GSI16 (23)`, lineNo);
+  const line = raw.replace(/^\*/, '').replace(/[\r\n]+$/, '');
+  if (!line.trim()) return [];
+  const first = line.split(/\s+/).filter(Boolean)[0];
+  // Block width comes from the first block.
+  const dataLen = first.length - 7;
+  if (dataLen !== 8 && dataLen !== 16) throw new GsiError(`the first block "${first}" is not GSI8 (15 characters) or GSI16 (23)`, lineNo);
   const blocks = [];
-  const step = 7 + dataLen + 1;
+  const width = 7 + dataLen;
+  const step = width + 1;
   for (let at = 0; at < line.length; at += step) {
-    const b = line.slice(at, at + 7 + dataLen);
-    if (b.length < 7 + dataLen) throw new GsiError(`block "${b}" is shorter than ${7 + dataLen} characters`, lineNo);
+    let b = line.slice(at, at + width);
+    // A text field (a note, a line name) can end in blanks that the file has trimmed; a number cannot.
+    if (b.length < width && !line.slice(at + b.length).trim() && /[A-Za-z]/.test(b.slice(7))) b = b.padEnd(width, ' ');
+    if (!b.trim()) break;
+    if (b.length < width) throw new GsiError(`block "${b}" is shorter than ${width} characters`, lineNo);
     if (!/^[\dA-Za-z]{2}[.\dA-Za-z]{4}[+-]/.test(b)) throw new GsiError(`"${b}" is not a GSI block (word index, information, sign, data)`, lineNo);
-    blocks.push({ wi: b.slice(0, 2), info: b.slice(2, 6), unit: b[5], sign: b[6] === '-' ? -1 : 1, data: b.slice(7), raw: b });
+    const wiLen = /^\d{3}\./.test(b) ? 3 : 2;
+    blocks.push({ wi: b.slice(0, wiLen), info: b.slice(wiLen, 6), unit: b[5], sign: b[6] === '-' ? -1 : 1, data: b.slice(7), raw: b });
   }
   return blocks;
 }
@@ -148,6 +164,10 @@ export function gsiToDat(text, opts = {}) {
   const coordsMode = opts.coords === 'free' ? 'free' : 'fixed';
   const vertical = opts.vertical === 'elevation' ? 'elevation' : 'zenith';
   if (!rows.length) throw new GsiError('the file has no data lines');
+  if (isLevelFile(rows)) return levelToDat(rows, units, opts);
+  // opts.prefix goes in front of every point id (ids can repeat from file to file).
+  const px = String(opts.prefix || '');
+  if (px) for (const r of rows) { if (r.id) r.id = px + r.id; if (r.station) r.station = px + r.station; }
 
   const distUnit = [...units.dist][0] || 'm';
   if (units.dist.size > 1) warnings.push({ line: null, message: `Mixed distance units (${[...units.dist].join(', ')}); the first (${distUnit}) is used for the whole file.` });
@@ -283,4 +303,157 @@ export function gsiToDat(text, opts = {}) {
     distanceUnit: distUnit, angleUnits: [...units.angle],
   };
   return { text: out.join('\n') + '\n', summary, warnings };
+}
+
+// ---- Digital level runs -------------------------------------------------------------------------------------------------
+
+/** A level file has back sight (331) or fore sight (332) readings. */
+function isLevelFile(rows) {
+  return rows.some((r) => r.words.has('331') || r.words.has('332') || r.words.has('333'));
+}
+
+/**
+ * Digital level GSI -> STAR*NET levelling data.
+ * One set-up (a back sight reading b at distance db, then a fore sight reading f at distance df) is one differential
+ * level L back-fore (b - f) (db + df). The start benchmark's height (WI 83 on a line with no readings) is a fixed E record.
+ * The instrument's own running heights (83 on the lines after each fore sight) are used to check the sums.
+ * A line the instrument calls a loop (WI 509 = WI 512) ends on its start benchmark, but the last fore sight carries the
+ * next sequential point id; when the closure is small it is renamed to the start id.
+ * The instrument numbers the turning points of every run from 1, so a file with several runs gets the later runs'
+ * points renamed R2_, R3_ ... (only benchmarks with a known height are shared).
+ * opts: { prefix } is put in front of every point id (ids repeat from file to file: every run starts at "A1").
+ */
+function levelToDat(rows, units, opts) {
+  const warnings = [];
+  const px = String(opts.prefix || '');
+  const id = (s) => px + s;
+  const distUnit = [...units.dist][0] || 'm';
+  const runs = [];
+  let run = null;
+  const newRun = () => { run = { setups: [], heights: new Map(), bs: null, startId: null, endId: null, closure: null }; runs.push(run); };
+  newRun();
+  let warnedIntermediate = false;
+  const bench = new Map();            // benchmark heights, shared by the whole file
+
+  const closeRun = () => {
+    const last = run.setups[run.setups.length - 1];
+    if (last && run.startId && run.startId === run.endId && last.to !== run.endId) {
+      const h0 = run.heights.get(run.startId);
+      const h1 = run.heights.get(last.to);
+      if (h0 !== undefined && h1 !== undefined && Math.abs(h1 - h0) < 0.01) {
+        warnings.push({ line: last.line, message: `The instrument calls this line a loop from and to ${run.startId}; the last fore sight (${last.to}) closes within ${(Math.abs(h1 - h0) * 1000).toFixed(2)} mm of it, so it was renamed ${run.endId}.` });
+        run.heights.delete(last.to);
+        last.to = run.endId;
+      } else if (h0 !== undefined && h1 !== undefined) {
+        warnings.push({ line: last.line, message: `The instrument calls this line a loop back to ${run.startId}, but the last point (${last.to}) is ${(Math.abs(h1 - h0) * 1000).toFixed(1)} mm from its height, so it was not renamed.` });
+      }
+    }
+    newRun();
+  };
+  const strayBs = () => { if (run.bs) { warnings.push({ line: run.bs.line, message: `Back sight on ${run.bs.id} has no fore sight after it; it was ignored.` }); run.bs = null; } };
+
+  for (const r of rows) {
+    const { words, num } = r;
+    if (words.has('505')) {                               // closure summary: the line ends here
+      strayBs();
+      run.startId = words.has('509') ? id(pointId(words.get('509'))) : run.startId;
+      run.endId = words.has('512') ? id(pointId(words.get('512'))) : null;
+      run.closure = '513' in num ? num['513'] : null;
+      closeRun();
+      continue;
+    }
+    if (words.has('41') && /\?/.test(words.get('41').data)) {   // "start of line": anything not closed before this is unfinished
+      strayBs();
+      if (run.setups.length) {
+        const keep = run.heights.size > 0;
+        warnings.push({ line: run.setups[0].line, message: keep
+          ? `A new line starts here but the run before it (${run.setups[0].from} to ${run.setups[run.setups.length - 1].to}) has no closure summary; it was kept.`
+          : `${run.setups.length} set-up${run.setups.length === 1 ? '' : 's'} before a new line starts (${run.setups[0].from} to ${run.setups[run.setups.length - 1].to}) have no starting benchmark and no closure summary, so they look like unfinished test readings and were left out.` });
+        if (keep) { run.endId = null; closeRun(); } else { runs.pop(); newRun(); }
+      }
+      continue;
+    }
+    if (!r.id) continue;                                  // code blocks (41-49) and the like
+    const pid = id(r.id);
+    if ('331' in num) {
+      strayBs();
+      run.bs = { id: pid, reading: num['331'], dist: num['32'] ?? null, line: r.line };
+    } else if ('332' in num) {
+      if (!run.bs) { warnings.push({ line: r.line, message: `Fore sight on ${pid} has no back sight before it; it was ignored.` }); continue; }
+      if (run.bs.dist === null || num['32'] === undefined) warnings.push({ line: r.line, message: `The set-up ${run.bs.id} to ${pid} has no sight distance; its length is incomplete.` });
+      const s = { from: run.bs.id, to: pid, dElev: run.bs.reading - num['332'], length: (run.bs.dist ?? 0) + (num['32'] ?? 0), line: r.line };
+      run.setups.push(s);
+      const h = run.heights.get(s.from);
+      if (h !== undefined) run.heights.set(pid, h + s.dElev);
+      run.bs = null;
+    } else if ('333' in num) {
+      if (!warnedIntermediate) { warnings.push({ line: r.line, message: 'Intermediate sights (word 333) are not used.' }); warnedIntermediate = true; }
+    } else if ('83' in num && !('573' in num)) {            // a benchmark with a known height
+      const old = bench.get(pid);
+      if (old !== undefined && Math.abs(old - num['83']) > 1e-5) warnings.push({ line: r.line, message: `Benchmark ${pid} is given again with a different height (${old.toFixed(5)} and ${num['83'].toFixed(5)}); the first is kept.` });
+      else if (old === undefined) bench.set(pid, num['83']);
+      run.heights.set(pid, bench.get(pid));
+      if (!run.startId) run.startId = pid;
+    } else if ('83' in num && '573' in num) {              // the instrument's own height for the point just observed
+      const mine = run.heights.get(pid);
+      if (mine !== undefined && Math.abs(mine - num['83']) > 0.0002) {
+        warnings.push({ line: r.line, message: `The instrument's height for ${pid} (${num['83'].toFixed(5)}) differs from the sum of the set-ups here (${mine.toFixed(5)}) by ${(Math.abs(mine - num['83']) * 1000).toFixed(2)} mm.` });
+      }
+    }
+  }
+  // Anything after the last closure summary.
+  strayBs();
+  if (run.setups.length && run.heights.size === 0) {
+    warnings.push({ line: run.setups[0].line, message: `${run.setups.length} set-up${run.setups.length === 1 ? '' : 's'} at the end of the file (${run.setups[0].from} to ${run.setups[run.setups.length - 1].to}) have no starting benchmark and no closure summary, so they look like unfinished test readings and were left out.` });
+    runs.pop();
+  } else if (run.setups.length) {
+    warnings.push({ line: null, message: 'The last line has no closure summary (word 505); it was read to the end of the file.' });
+  } else {
+    runs.pop();
+  }
+
+  const all = runs.filter((x) => x.setups.length);
+  if (!all.length) throw new GsiError('the file has no level set-ups (back sight and fore sight readings)');
+
+  if (all.length > 1) {
+    all.forEach((rn, k) => {
+      if (k === 0) return;
+      const ren = (s) => (bench.has(s) ? s : `${px}R${k + 1}_${s.slice(px.length)}`);
+      for (const s of rn.setups) { s.from = ren(s.from); s.to = ren(s.to); }
+    });
+    const later = all.length === 2 ? 'run 2' : `runs 2 to ${all.length}`;
+    warnings.push({ line: null, message: `The file has ${all.length} runs, and the instrument numbers the points of each run from 1. The points of ${later} were given the prefix R2_${all.length > 2 ? ', R3_ ...' : ''} so they stay separate; only benchmarks with a known height are shared. If a point really is the same in two runs, give it the same name in the .dat.` });
+  }
+
+  const out = [];
+  out.push('# Imported from a Leica digital level GSI file by Survey-Adjust.');
+  out.push('# One L record per set-up: the back sight reading minus the fore sight reading, and the sum of the two sight distances.');
+  out.push(distUnit === 'ft' ? '.UNITS Feet' : '.UNITS Meters');
+  out.push('');
+  const f5 = (v) => v.toFixed(5);
+  if (!bench.size) warnings.push({ line: null, message: 'No benchmark height was found (a line with word 83 and no readings). Add an E record with a fixed height before adjusting.' });
+  for (const [bid, h] of bench) out.push(`E ${bid} ${f5(h)} !`);
+  if (bench.size) out.push('');
+  let nSetups = 0;
+  all.forEach((rn, i) => {
+    const first = rn.setups[0].from; const lastTo = rn.setups[rn.setups.length - 1].to;
+    const closure = rn.closure !== null ? `, the instrument's closure ${(rn.closure * 1000).toFixed(2)} mm` : '';
+    out.push(`# Run ${i + 1}: ${rn.setups.length} set-up${rn.setups.length === 1 ? '' : 's'}, from ${first} to ${lastTo}${closure}`);
+    for (const s of rn.setups) {
+      nSetups++;
+      const names = (s.from.includes('-') || s.to.includes('-')) ? `${s.from} ${s.to}` : `${s.from}-${s.to}`;
+      out.push(`L ${names} ${f5(s.dElev)} ${s.length.toFixed(3)}`);
+    }
+    out.push('');
+  });
+  while (out.length && out[out.length - 1] === '') out.pop();
+  const stations = new Set();
+  for (const rn of all) for (const s of rn.setups) { stations.add(s.from); stations.add(s.to); }
+  return {
+    text: out.join('\n') + '\n', warnings,
+    summary: {
+      kind: 'level', dimension: 1, lines: rows.length, runs: all.length, setups: nSetups, benchmarks: bench.size, stations: [...stations],
+      sets: 0, directionsWithDistance: 0, directionsOnly: 0, otherShots: 0, dropped: 0, face2: 0, coordinates: bench.size, distanceUnit: distUnit, angleUnits: [],
+    },
+  };
 }
