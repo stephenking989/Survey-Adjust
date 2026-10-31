@@ -105,3 +105,21 @@ export function settingsFromSnproj(text, base = defaultSettings()) {
   if (adj.fixed_angular_std_err !== undefined) s.fixedAngularStdErr = Number(adj.fixed_angular_std_err);
   return s;
 }
+
+/**
+ * The data file names listed under [DataFileList] in a .snproj, in order, e.g.  3 "NET_B.dat".
+ * (The number in front is not interpreted: only the quoted names and their order are used.)
+ */
+export function dataFileNamesFromSnproj(text) {
+  const names = [];
+  let inList = false;
+  for (const raw of String(text).split(/\r\n|\n|\r/)) {
+    const line = raw.trim();
+    const sec = /^\[(.+)\]$/.exec(line);
+    if (sec) { inList = sec[1] === 'DataFileList'; continue; }
+    if (!inList || line.startsWith('#')) continue;
+    const m = /"([^"]+)"/.exec(line);
+    if (m) names.push(m[1].replace(/^.*[\\/]/, ''));
+  }
+  return names;
+}

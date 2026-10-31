@@ -11,22 +11,31 @@ No build step, no frameworks, no runtime dependencies. Plain JavaScript ES modul
 | Version | Scope |
 |---|---|
 | 0.1 | Engine core + 1D differential levelling, report, CSV, mobile UI, offline PWA |
-| **0.2 (now)** | **3D total-station networks**: direction sets, slope distances, zenith angles, angles, azimuths, weighted/fixed control, starting coordinates computed from the observations |
+| 0.2 | 3D total-station networks: direction sets, slope distances, zenith angles, angles, azimuths, weighted/fixed control, starting coordinates computed from the observations |
+| **0.3 (now)** | **Projects like STAR*NET's**: several data files with include checkboxes and a reading order, an in-page editor for each file, Check data, a results page, and plain-language help when the chi-square test fails |
 | Next | 2D networks, error ellipses, direction correlation from instrument centering |
 | Later | Importers: Trimble JobXML, Carlson RW5, Leica GSI |
 | Later | Grid / NAD83(CSRS) support |
 
 ## Using it
 
-1. Open the app and tap **Open .dat file** (works with a USB stick on Android/iOS), or paste the data, or try a built-in sample (levelling or 3D).
-2. Check the project settings. STAR*NET keeps these in the `.snproj`, not the `.dat`, so enter them or tap **Load settings from .snproj**:
-   - levelling: the differential level std error per km
-   - 3D: the instrument (distance constant and ppm, direction, zenith, angle and azimuth std errors, centering errors) and the refraction coefficient
-3. Tap **Adjust**.
-4. Read the report. A failed chi-square test is shown in red, and observations with |StdRes| over the limit (default 3) are highlighted.
-5. Download the report (`.lst`) and the coordinates as CSV (`Point,Elevation`, `PNEZD`, or `Point,N,E`).
+The app has three tabs, the same loop STAR*NET uses: edit the data, run, read the results.
 
-Add it to your home screen (or install it from the browser menu) and it works with no signal. Nothing is ever uploaded.
+1. **Data.** Add your `.dat` files (pick several at once, and a `.snproj` too if you have it: its options and file order are used), or start a new file, or try a sample. Each file has a checkbox (untick it to leave it out of the next run), up/down buttons (files are read in list order) and a remove button. Tap a name to **edit it in the page**: line numbers, bad lines marked in red as you type, undo/redo, find, and a row of keys for `- . ! * # '` that are awkward on a phone. Your text is saved on the device after every change.
+2. **Check data** lists every syntax error and warning with its file and line (tap one to jump there). **Adjust** runs the adjustment.
+3. **Options.** STAR*NET keeps these in the `.snproj`, not the `.dat`, so enter them or load the `.snproj`: levelling needs the differential level std error per km; 3D needs the instrument (distance constant and ppm, direction, zenith, angle and azimuth std errors, centering errors) and the refraction coefficient.
+4. **Results.** *Summary* (chi-square verdict, numbers, error factor by type of observation, and advice), *Listing* (the full STAR*NET-style report with a jump-to-section list), *Residuals* (worst first; tap a row to open that line in the editor), *Points* (adjusted coordinates), *Messages*. Download the listing (`.lst`) or the coordinates as CSV (`Point,Elevation`, `PNEZD`, or `Point,N,E`).
+
+### If the chi-square test fails
+
+That is a statement about your std errors, not about the software: the test passes only when the real scatter of your data matches the std errors you gave. Run on the default options, almost any real job fails. After you enter the instrument from the job's `.snproj`, the two 3D test jobs pass and the levelling job still fails (STAR*NET fails it too: its error factor is 6.3). The Summary page says which of two things it looks like, using only numbers from the run:
+
+- **One blunder:** a single residual far larger than the rest. It names the observation and its file and line.
+- **Std errors too small (or too large) overall:** many moderate residuals. It shows the error factor by type of observation (directions, distances, zeniths ...) and which Options field controls the worst one.
+
+Std devs are scaled by the error factor when the test fails, as STAR*NET does (switch it off in Options).
+
+Add the app to your home screen (or install it from the browser menu) and it works with no signal. Nothing is ever uploaded.
 
 ## Data file support (`.dat`)
 
@@ -35,6 +44,7 @@ Add it to your home screen (or install it from the browser menu) and it works wi
 | `#` comments, blank lines, CRLF/LF, `'description` | supported |
 | Options `.UNITS .ORDER .3D .2D .LEVEL .REF .CURVE .EDM .ADDC .END` | parsed; all used. `.ORDER` takes both `NE`/`EN` and `ATFROMTO`/`FROMATTO` |
 | Any other `.OPTION` (`.DELTA`, `.REL`, ...) | parsed and stored, not used yet |
+| Several data files in one project | read in list order; inline options end with each file, as in STAR*NET (manual 5.8); direction sets are numbered across files |
 | Inline options that change mid-file (`.REF`, `.CURVE`, `.EDM`, `.ADDC`) | each observation uses the setting in force on its own line |
 | `E name elev [! \| * \| stdErr]` | 1D control: fixed, free, weighted |
 | `C name N E [Z] [! \| * \| stdErr ...]` | control, fixed / free / weighted per component |
@@ -117,8 +127,9 @@ node tools/serve.js 8080         # then open http://localhost:8080/
 
 ```
 engine/   pure functions, no DOM: parser, matrix maths, statistics, levelling, 3D network,
-          approximate coordinates, reports
-app/      the web page: index.html, style.css, app.js, manifest.json, icon.svg, samples/
+          approximate coordinates, reports, multi-file reading, data check, chi-square advice
+app/      the web page: index.html, style.css, app.js (wiring), store.js (project and files),
+          editor.js, results.js, manifest.json, icon.svg, samples/
 tests/    node:test suites (no packages); tests/fixtures holds the real STAR*NET jobs
           (1D levelling, and 3d/ with the two 3D runs)
 tools/    local dev server

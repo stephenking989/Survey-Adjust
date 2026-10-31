@@ -99,9 +99,9 @@ export function adjustLevelling(parsed, settings) {
 
   // ---- 1. Collect stations (order of first appearance, as in the .lst) -----
   const stations = new Map();
-  const getStation = (name, line) => {
+  const getStation = (name, rec) => {
     if (!stations.has(name)) {
-      stations.set(name, { name, control: null, description: '', firstLine: line, nObs: 0 });
+      stations.set(name, { name, control: null, description: '', firstLine: rec.line, firstFile: rec.file, nObs: 0 });
     }
     return stations.get(name);
   };
@@ -109,21 +109,21 @@ export function adjustLevelling(parsed, settings) {
   const levelRecs = [];
   for (const r of parsed.records) {
     if (r.type === 'E' || (r.type === 'C' && r.elevation !== undefined)) {
-      const st = getStation(r.name, r.line);
+      const st = getStation(r.name, r);
       const ctl = r.type === 'E'
         ? { status: r.status, value: r.elevation, stdErr: r.stdErr }
         : { status: r.status.elevation, value: r.elevation, stdErr: r.stdErr.elevation };
       if (ctl.status === 'weighted' && !(ctl.stdErr > 0)) {
-        throw new AdjustmentError(`Line ${r.line}: weighted station ${r.name} needs a std error > 0`);
+        throw new AdjustmentError(`Line ${r.line}: weighted station ${r.name} needs a std error > 0`, { file: r.file, line: r.line });
       }
-      if (st.control) warnings.push({ line: r.line, message: `Station ${r.name} entered again; the later value is used` });
+      if (st.control) warnings.push({ file: r.file, line: r.line, message: `Station ${r.name} entered again; the later value is used` });
       st.control = ctl;
       if (r.description) st.description = r.description;
     } else if (r.type === 'L') {
       levelRecs.push(r);
-      if (r.from === r.to) throw new AdjustmentError(`Line ${r.line}: level run from ${r.from} to itself`);
-      getStation(r.from, r.line);
-      getStation(r.to, r.line);
+      if (r.from === r.to) throw new AdjustmentError(`Line ${r.line}: level run from ${r.from} to itself`, { file: r.file, line: r.line });
+      getStation(r.from, r);
+      getStation(r.to, r);
     }
   }
   if (levelRecs.length === 0) throw new AdjustmentError('The data file has no L (differential level) observations');
@@ -134,14 +134,14 @@ export function adjustLevelling(parsed, settings) {
     if (sigma === null) {
       const lv = r.levelOption;
       const mode = (lv ? lv.mode : settings.levelSectionType) || 'LENGTH';
-      if (mode !== 'LENGTH') throw new AdjustmentError(`Line ${r.line}: level std error by ${mode} is not supported yet (only LENGTH)`);
+      if (mode !== 'LENGTH') throw new AdjustmentError(`Line ${r.line}: level std error by ${mode} is not supported yet (only LENGTH)`, { file: r.file, line: r.line });
       const c = lv && Number.isFinite(lv.stdErr) ? lv.stdErr : settings.levelStdErr;
       if (!(c > 0)) throw new AdjustmentError('The level std error per distance must be greater than zero');
-      if (!(r.length > 0)) throw new AdjustmentError(`Line ${r.line}: ${r.from}-${r.to} has no length, so it cannot be weighted`);
+      if (!(r.length > 0)) throw new AdjustmentError(`Line ${r.line}: ${r.from}-${r.to} has no length, so it cannot be weighted`, { file: r.file, line: r.line });
       // sigma^2 = c^2 * d   (d in the per-distance unit: km or mile)
       sigma = c * Math.sqrt(r.length / unitInfo.perDistance);
     }
-    if (!(sigma > 0)) throw new AdjustmentError(`Line ${r.line}: std error must be greater than zero`);
+    if (!(sigma > 0)) throw new AdjustmentError(`Line ${r.line}: std error must be greater than zero`, { file: r.file, line: r.line });
     stations.get(r.from).nObs++;
     stations.get(r.to).nObs++;
     return { rec: r, from: r.from, to: r.to, observed: r.dElev, length: r.length, sigma, line: r.line, file: r.file };
@@ -150,7 +150,7 @@ export function adjustLevelling(parsed, settings) {
   // Free stations that nothing refers to are not part of the network.
   for (const [name, st] of [...stations]) {
     if (st.nObs === 0 && (!st.control || st.control.status === 'free')) {
-      warnings.push({ line: st.firstLine, message: `Station ${name} has no observations and is not control; ignored` });
+      warnings.push({ file: st.firstFile, line: st.firstLine, message: `Station ${name} has no observations and is not control; ignored` });
       stations.delete(name);
     }
   }

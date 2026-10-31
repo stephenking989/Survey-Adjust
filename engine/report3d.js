@@ -77,7 +77,7 @@ export function buildReport3D(result, opts = {}) {
   push();
   if (result.warnings.length) {
     heading('Warnings');
-    for (const w of result.warnings) push(`      ${w.line ? `Line ${w.line}: ` : ''}${w.message}`, w.note ? null : 'warn');
+    for (const w of result.warnings) push(`      ${w.line ? `${w.file || 1}:${w.line}  ` : ''}${w.message}`, w.note ? null : 'warn');
     push();
   }
 
@@ -195,7 +195,7 @@ export function buildReport3D(result, opts = {}) {
     push(center('(Stations with Partially Fixed Coordinate Components)')); push();
     push('Station           Component     Adj Coordinate      Residual   StdErr StdRes File:Line');
     for (const o of result.coordinateObservations) {
-      push(`${padR(o.name, 18)}${padR(o.component, 10)}${padL(f(o.adjusted, 4), 15)}${padL(f(o.residual, 4), 14)}${padL(f(o.sigma, 4), 9)}${stdResCell(o)}   1:${o.line}`.trimEnd(), o.flagged ? 'flag' : null);
+      push(`${padR(o.name, 18)}${padR(o.component, 10)}${padL(f(o.adjusted, 4), 15)}${padL(f(o.residual, 4), 14)}${padL(f(o.sigma, 4), 9)}${stdResCell(o)}   ${o.file || 1}:${o.line}`.trimEnd(), o.flagged ? 'flag' : null);
     }
     push();
   }
