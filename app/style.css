@@ -123,10 +123,17 @@ h3 { margin: 12px 0 0; font-size: .95rem; }
 @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* ---- Tabs -------------------------------------------------------------------- */
+/* Folder tabs: the active tab is outlined round its top and sides and takes the page colour, so the strip's
+   bottom line breaks under it and the tab flows into the page below. */
 .tabs { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); }
-.tabs-in { display: flex; gap: 4px; }
-.tab { flex: 1; min-height: 46px; border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; }
-.tab[aria-current=page] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs-in { display: flex; gap: 4px; align-items: flex-end; padding-top: 8px; }
+.tab {
+  flex: 1; min-height: 44px; margin-bottom: -1px;            /* sits on the strip's bottom line */
+  border: 1px solid transparent; border-bottom-color: transparent; border-radius: 10px 10px 0 0;
+  background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-current=page] { background: var(--bg); color: var(--accent); border-color: var(--accent); border-bottom-color: var(--bg); }
 .tab:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-left: 4px; vertical-align: 2px; }
 .view[hidden], .page[hidden] { display: none; }
